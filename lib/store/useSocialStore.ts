@@ -33,12 +33,12 @@ export const useSocialStore = create<SocialState>()(
   ),
 );
 
-/** Stabile Mock-Grundzahl je Objekt (3–40), eigene Objekte starten bei 0. */
+/** Stabile Mock-Grundzahl je Objekt (10–100), eigene Objekte starten bei 0. */
 export function baseLikes(key: string, mine: boolean) {
   if (mine) return 0;
   let h = 7;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 9973;
-  return 3 + (h % 38);
+  return 10 + (h % 91);
 }
 
 export function useLikes(key: string, mine = false) {

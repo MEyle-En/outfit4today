@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import { categoryFromLabel } from "@/lib/categories";
 import { colorFromLabel } from "@/lib/colors";
 import { applyVisibility, defaultVisibility, visibilityFromLegacy } from "@/lib/visibility";
+import { placeholderPhoto } from "@/lib/mock-data";
 import { MOCK_WARDROBE, uid } from "@/lib/mock/wardrobe";
 import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from "@/types";
 
@@ -13,8 +14,18 @@ export type NewItem = Pick<WardrobeItem, "name" | "image" | "tags" | "category">
   visibility?: Partial<Visibility>;
 };
 
+/** Lokales Datum als Schlüssel (JJJJ-MM-TT) – der Tagesfortschritt beginnt jeden Tag neu. */
+export const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 interface WardrobeState {
   items: WardrobeItem[];
+  /** "Item des Tages": IDs der Teile, die heute schon bearbeitet wurden (getragen, übersprungen, gestylt, angeboten) */
+  daily: { date: string; handled: string[] };
+  markHandledToday: (id: string) => void;
+  resetDaily: () => void;
   addItem: (item: NewItem) => void;
   /** Bulk: mehrere Items in einem Rutsch */
   addItems: (items: NewItem[]) => void;
@@ -55,6 +66,14 @@ export const useWardrobeStore = create<WardrobeState>()(
   persist(
     (set) => ({
       items: MOCK_WARDROBE,
+      daily: { date: todayKey(), handled: [] },
+      markHandledToday: (id) =>
+        set((s) => {
+          const today = todayKey();
+          const handled = s.daily.date === today ? s.daily.handled : []; // neuer Tag: von vorn
+          return { daily: { date: today, handled: handled.includes(id) ? handled : [...handled, id] } };
+        }),
+      resetDaily: () => set({ daily: { date: todayKey(), handled: [] } }),
       addItem: (item) => set((s) => ({ items: [build(item), ...s.items] })),
       addItems: (items) => set((s) => ({ items: [...items.map(build), ...s.items] })),
       removeItem: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
@@ -100,17 +119,20 @@ export const useWardrobeStore = create<WardrobeState>()(
             ids.includes(i.id) ? { ...i, wearCount: i.wearCount + 1, lastWorn: new Date().toISOString() } : i,
           ),
         })),
-      clearAll: () => set({ items: [] }),
+      clearAll: () => set({ items: [], daily: { date: todayKey(), handled: [] } }),
     }),
     {
       name: STORAGE.wardrobe,
-      version: 6,
+      version: 7,
       // v1 -> v2: bestehende Items bekommen category (aus dem Kategorie-Tag) und sharedWithCrew
-      migrate: (persisted) => {
+      migrate: (persisted, version) => {
         const state = persisted as { items?: Partial<WardrobeItem>[] };
+        // v7: neue Mock-Teile mit echten Fotos einmalig nachreichen (Vorhandenes bleibt unangetastet)
+        const have = new Set((state.items ?? []).map((i) => i.id));
+        const extra = version < 7 ? MOCK_WARDROBE.filter((m) => !have.has(m.id)) : [];
         return {
           ...state,
-          items: (state.items ?? []).map((i) => ({
+          items: [...(state.items ?? []), ...extra].map((i) => ({
             ...i,
             category: i.category ?? categoryFromLabel(i.tags?.find((t) => t.kind === "category")?.label),
             // v2 -> v3: Farbe aus dem Farb-Tag ableiten
@@ -122,7 +144,16 @@ export const useWardrobeStore = create<WardrobeState>()(
       // der Farbfilter auch bei bereits gespeicherten Items exakt auf das color-Feld prüfen kann.
       merge: (persisted, current) => {
         const p = persisted as Partial<WardrobeState> | undefined;
-        const items = (p?.items ?? current.items).map((i) =>
+        // Alte Mock-/Platzhalterbilder (Picsum: Frösche, Städte …) durch passende Kleidungsfotos ersetzen
+        const fresh = new Map(MOCK_WARDROBE.map((m) => [m.id, m]));
+        const fixImage = (i: WardrobeItem): WardrobeItem => {
+          if (!i.image?.includes("picsum.photos")) return i;
+          const m = fresh.get(i.id);
+          return m
+            ? { ...m, wearCount: i.wearCount, lastWorn: i.lastWorn, visibility: i.visibility, listing: i.listing, price: i.price }
+            : { ...i, image: placeholderPhoto(i.category, i.color) };
+        };
+        const items = (p?.items ?? current.items).map(fixImage).map((i) =>
           ({ ...i, wearCount: i.wearCount ?? 0, color: i.color ?? colorFromLabel(i.tags?.find((t) => t.kind === "color")?.label) }),
         ).map((i) => {
           // Alte Items (nur sharedWithCrew/listing) bekommen das neue visibility-Objekt; das Altfeld verschwindet

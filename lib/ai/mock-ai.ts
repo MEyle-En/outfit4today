@@ -32,59 +32,94 @@ const SAMPLES: { name: string; category: ItemCategory; material: string }[] = [
 ];
 const COLORS: ItemColor[] = ["black", "white", "beige", "gray", "blue", "purple", "green"];
 
+// ---------------------------------------------------------------------------------------------
+// Farbe
+// ---------------------------------------------------------------------------------------------
+
 /**
- * Simuliert Bildanalyse (1,5 s). Kein echtes Computer Vision. Aussagekräftige Dateinamen
- * ("schwarze-jeans.jpg") werden wie Quick-Add-Text ausgewertet, sonst gibt es einen Zufallsvorschlag.
- * Die Farbe wird anschließend aus den Pixeln bestimmt (lib/image-color.ts).
+ * Farbe aus Dateiname und Tags – nur wenn dort ein Farbname vorkommt (DE/EN/FR/ES/IT), sonst undefined.
+ * Ganze Wörter statt Teilstrings: "Karotte" ist nicht Rot, "Bluse" nicht Blau.
  */
-export async function analyzeImage(fileName?: string): Promise<AiResult> {
-  await wait(1500);
-
-  const hint = (fileName ?? "")
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/[_\-.]+/g, " ")
-    .replace(/\d+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const meaningful = /[a-zäöüß]{3,}/i.test(hint) && !/^(img|dsc|image|photo|foto|screenshot|whatsapp|pxl|bild|unbenannt)\b/i.test(hint);
-  if (meaningful) {
-    const cat = CATEGORIES.find(([re]) => re.test(hint.toLowerCase()));
-    if (cat) {
-      const color = colorFromLabel(hint);
-      const tags: ItemTag[] = [tag("category", categoryLabel(cat[1]))];
-      if (color) tags.push(tag("color", colorLabel(color)));
-      if (cat[2]) tags.push(tag("material", cat[2]));
-      return { name: titleCase(hint), category: cat[1], color, tags };
-    }
-  }
-
-  const s = pick(SAMPLES);
-  const color = pick(COLORS);
-  return {
-    name: s.name,
-    category: s.category,
-    color,
-    tags: [tag("category", categoryLabel(s.category)), tag("color", colorLabel(color)), tag("material", s.material)],
-  };
+export function detectColorFromText(filename: string, tags: string[] = []): ItemColor | undefined {
+  return colorFromLabel(`${filename.replace(/\.[a-z0-9]+$/i, "")} ${tags.join(" ")}`);
 }
 
-// Reihenfolge zählt: spezifischere Begriffe zuerst
-const CATEGORIES: [RegExp, ItemCategory, string | null][] = [
-  [/pflanze|plant|monstera|poster|kunst|\bart\b|bild|kamera|camera|skateboard|\bboard\b|buch|book|kerze|candle|vinyl|platte|lampe|vase/, "lifestyle", null],
-  [/hijab|kopftuch/, "hijab", "Jersey"],
-  [/socke|socks/, "socks", "Baumwolle"],
-  [/jeans/, "bottom", "Denim"],
-  [/hose|cargo|pants|jogger|rock|skirt|shorts/, "bottom", "Baumwolle"],
-  [/jacke|jacket|mantel|coat|bomber|puffer|blazer/, "outerwear", "Nylon"],
-  [/hoodie|pullover|sweater|sweatshirt|strick/, "top", "Baumwolle"],
-  [/shirt|tee|top|bluse|hemd/, "top", "Baumwolle"],
-  [/sneaker|schuh|boots|stiefel|loafer/, "shoes", "Leder"],
-  [/kleid|dress/, "dress", null],
-  [/tasche|bag|rucksack/, "bag", "Leder"],
-  [/kette|ring|ohrring|armband|schmuck/, "jewelry", "Silber"],
-  [/cap|beanie|mütze|\bhut\b|hat/, "hat", "Baumwolle"],
-  [/gürtel|schal|brille|uhr|watch/, "accessory", null],
+const COMMON_COLORS: ItemColor[] = ["black", "blue", "gray", "white"];
+
+/** Wie detectColorFromText, liefert aber immer eine Farbe: ohne Hinweis eine der häufigen (Schwarz, Blau, Grau, Weiß). */
+export function detectColor(filename: string, tags: string[] = []): ItemColor {
+  return detectColorFromText(filename, tags) ?? pick(COMMON_COLORS);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Kategorie
+// ---------------------------------------------------------------------------------------------
+
+/** Schlüsselwörter je Kategorie (DE/EN). Reihenfolge = Gleichstand-Priorität (spezifischere zuerst). */
+const CATEGORY_KEYWORDS: [ItemCategory, string[]][] = [
+  ["lifestyle", ["pflanze", "plant", "monstera", "kamera", "camera", "buch", "book", "kerze", "candle", "poster", "bild", "art", "vase", "lampe", "vinyl", "skateboard"]],
+  ["hijab", ["hijab", "kopftuch", "headscarf", "tuch"]],
+  ["socks", ["socke", "socken", "socks"]],
+  ["shoes", ["schuh", "shoe", "sneaker", "boot", "stiefel", "heels", "sandale", "sandalen", "sandals", "loafer", "pumps"]],
+  ["bag", ["tasche", "bag", "handtasche", "rucksack", "backpack", "clutch"]],
+  ["jewelry", ["schmuck", "jewelry", "jewellery", "kette", "necklace", "ring", "ohrring", "earring", "armband", "bracelet"]],
+  ["hat", ["mütze", "hat", "cap", "beanie", "hut"]],
+  ["dress", ["kleid", "dress", "jumpsuit", "overall", "overalls"]],
+  ["outerwear", ["jacke", "jacket", "mantel", "coat", "blazer", "weste", "vest", "bomber", "puffer", "parka", "windbreaker"]],
+  ["bottom", ["hose", "pants", "trousers", "jeans", "rock", "skirt", "shorts", "leggings", "cargo", "jogger", "jogginghose"]],
+  ["top", ["shirt", "tshirt", "tee", "bluse", "blouse", "top", "hoodie", "sweatshirt", "sweater", "pullover", "pulli", "strick", "tank", "crop", "cardigan", "hemd", "longsleeve"]],
+  ["accessory", ["gürtel", "belt", "schal", "scarf", "brille", "sunglasses", "uhr", "watch", "handschuh", "gloves"]],
 ];
+
+// Deutsche Hauptwörter, die als Wortende zusammengesetzter Wörter vorkommen ("Cargohose", "Lederjacke", "Handtasche")
+const COMPOUND_HEADS = new Set(["hose", "rock", "jacke", "mantel", "kleid", "schuh", "tasche", "kette", "mütze", "tuch", "weste", "bluse", "shirt", "buch", "bild", "lampe", "brille", "socke", "schal", "hut"]);
+
+/**
+ * Wie gut passt ein Wort zu einem Schlüsselwort?
+ * 3 = exakt (auch einfache Mehrzahl: "sneakers", "hosen"), 2 = Wortende ("Jeansjacke" -> jacke), 1 = Wortanfang ("sneakerboot"), 0 = kein Treffer.
+ * Teilstrings mitten im Wort zählen nie ("Laptop" ist kein Top, "Spring" kein Ring, "Party" keine Kunst).
+ */
+function keywordScore(word: string, kw: string): number {
+  if (word === kw || word === kw + "s" || word === kw + "e" || word === kw + "n" || word === kw + "en") return 3;
+  if ((kw.length >= 5 || COMPOUND_HEADS.has(kw)) && word.length > kw.length && word.endsWith(kw)) return 2;
+  if (kw.length >= 5 && word.length > kw.length && word.startsWith(kw)) return 1;
+  return 0;
+}
+
+const words = (text: string) => text.toLowerCase().split(/[^a-zäöüß]+/).filter(Boolean);
+
+/** Kategorie aus Text, oder undefined, wenn nichts passt. Das beste Wort-Schlüsselwort-Paar gewinnt. */
+export function matchCategory(text: string): ItemCategory | undefined {
+  const ws = words(text);
+  let best: { category: ItemCategory; score: number } | undefined;
+  for (const [category, kws] of CATEGORY_KEYWORDS) {
+    for (const w of ws) {
+      for (const kw of kws) {
+        const score = keywordScore(w, kw);
+        if (score > (best?.score ?? 0)) best = { category, score };
+      }
+    }
+  }
+  return best?.category;
+}
+
+/** Kategorie aus Dateiname und Tags; ohne Treffer "top" (wie in deinem Entwurf). */
+export function detectCategory(filename: string, tags: string[] = []): ItemCategory {
+  return matchCategory(`${filename.replace(/\.[a-z0-9]+$/i, "")} ${tags.join(" ")}`) ?? "top";
+}
+
+const DEFAULT_MATERIAL: Partial<Record<ItemCategory, string>> = {
+  top: "Baumwolle",
+  bottom: "Baumwolle",
+  outerwear: "Nylon",
+  shoes: "Leder",
+  bag: "Leder",
+  jewelry: "Silber",
+  hat: "Baumwolle",
+  hijab: "Jersey",
+  socks: "Baumwolle",
+};
+
 const MATERIALS: [RegExp, string][] = [
   [/leder|leather/, "Leder"],
   [/wolle|wool/, "Wolle"],
@@ -96,21 +131,84 @@ const BRANDS = ["zara", "h&m", "nike", "adidas", "uniqlo", "weekday", "asos", "l
 
 const titleCase = (s: string) => s.replace(/\S+/g, (w) => w[0].toUpperCase() + w.slice(1));
 
+const materialFor = (text: string, category: ItemCategory) =>
+  MATERIALS.find(([re]) => re.test(text.toLowerCase()))?.[1] ?? DEFAULT_MATERIAL[category];
+
+// ---------------------------------------------------------------------------------------------
+// Bild- und Text-Analyse (simuliert)
+// ---------------------------------------------------------------------------------------------
+
+const CATEGORY_TITLES: Record<ItemCategory, string[]> = {
+  top: ["Classic White Tee", "Oversized Hoodie", "Silk Blouse", "Crop Top"],
+  bottom: ["Vintage Jeans", "Black Trousers", "Pleated Skirt", "Cargo Pants"],
+  dress: ["Summer Dress", "Evening Gown", "Casual Midi Dress"],
+  outerwear: ["Denim Jacket", "Leather Jacket", "Wool Coat", "Blazer"],
+  shoes: ["White Sneakers", "Black Boots", "Classic Heels", "Running Shoes"],
+  bag: ["Leather Bag", "Mini Shoulder Bag", "Canvas Tote", "Crossbody Bag"],
+  jewelry: ["Gold Necklace", "Silver Ring", "Pearl Earrings", "Chunky Bracelet"],
+  hat: ["Bucket Hat", "Wool Beanie", "Baseball Cap"],
+  socks: ["Crew Socks", "Striped Socks", "Wool Socks"],
+  accessory: ["Silk Scarf", "Leather Belt", "Round Sunglasses", "Vintage Watch"],
+  hijab: ["Cotton Hijab", "Silk Headscarf", "Chiffon Hijab"],
+  lifestyle: ["Monstera Plant", "Vintage Camera", "Art Poster", "Scented Candle"],
+};
+
+const GENERIC_NAME = /^(img|dsc|dscn|image|photo|foto|screenshot|whatsapp|pxl|bild|untitled|unbenannt|download|scan)?\s*$/i;
+
+/**
+ * Titel aus Dateiname und Kategorie. Ein aussagekräftiger Dateiname wird gesäubert und mit großen Anfangsbuchstaben
+ * übernommen ("schwarze_jeans.jpg" -> "Schwarze Jeans"). Generische Namen (IMG_1234, photo, untitled …) bekommen
+ * einen passenden Titel der Kategorie, z.B. "Denim Jacket".
+ */
+export function generateTitle(filename: string, category: ItemCategory): string {
+  const name = filename
+    .replace(/\.[^/.]+$/, "") // Endung weg
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\b\d+\b/g, " ") // reine Zahlen (Zähler, Datum) weg
+    .replace(/\s+/g, " ")
+    .trim();
+  if (GENERIC_NAME.test(name) || name.length < 3 || !/[a-zäöüß]{3,}/i.test(name)) return pick(CATEGORY_TITLES[category]);
+  return titleCase(name.toLowerCase());
+}
+
+/**
+ * Simuliert Bildanalyse (1,5 s). Kein echtes Computer Vision. Aus dem Dateinamen werden Kategorie, Farbe, Material
+ * und Titel gelesen, wo er etwas hergibt; sonst gibt es einen Zufallsvorschlag mit passendem Titel.
+ * Die Farbe wird anschließend aus den Pixeln bestimmt (lib/image-color.ts).
+ */
+export async function analyzeImage(fileName?: string): Promise<AiResult> {
+  await wait(1500);
+
+  const base = (fileName ?? "").replace(/\.[a-z0-9]+$/i, "").replace(/[_\-.]+/g, " ");
+  const sample = pick(SAMPLES);
+  // Kategorie aus dem Dateinamen, sonst zufällig
+  const category = matchCategory(base) ?? sample.category;
+  const name = generateTitle(fileName ?? "", category);
+  const color = colorFromLabel(base) ?? pick(COLORS);
+  const material = materialFor(base, category) ?? sample.material;
+
+  return {
+    name,
+    category,
+    color,
+    tags: [tag("category", categoryLabel(category)), tag("color", colorLabel(color)), tag("material", material)],
+  };
+}
+
 /** Simuliert Text -> Item (0,9 s). Regelbasiertes Parsing statt LLM. */
 export async function parseQuickAdd(text: string): Promise<AiResult> {
   await wait(900);
   const t = text.toLowerCase();
   const tags: ItemTag[] = [];
 
-  const cat = CATEGORIES.find(([re]) => re.test(t));
-  const category: ItemCategory = cat?.[1] ?? "top";
-  if (cat) tags.push(tag("category", categoryLabel(category)));
-  // Farbwörter im Text: erstes Wort, das eine Farbe ergibt ("Schwarze" -> black)
+  const matched = matchCategory(t);
+  const category: ItemCategory = matched ?? "top";
+  if (matched) tags.push(tag("category", categoryLabel(category)));
   // Erstes erkanntes Farbwort; Jeans/Denim ohne Farbwort -> Blau
-  const color = colorFromLabel(t) ?? (/jeans|denim/.test(t) ? ("blue" as ItemColor) : undefined);
+  const color = colorFromLabel(t) ?? (/\b(jeans|denim)\b/.test(t) ? ("blue" as ItemColor) : undefined);
   if (color) tags.push(tag("color", colorLabel(color)));
-  const mat = MATERIALS.find(([re]) => re.test(t))?.[1] ?? cat?.[2];
-  if (mat) tags.push(tag("material", mat));
+  const mat = materialFor(t, category);
+  if (mat && matched) tags.push(tag("material", mat));
   const brand = BRANDS.find((b) => t.includes(b));
   if (brand) tags.push(tag("brand", titleCase(brand)));
   if (!tags.length) tags.push(tag("custom", "Neu"));

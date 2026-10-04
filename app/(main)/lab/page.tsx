@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -26,6 +27,7 @@ import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 
 export default function LabPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const canvasItems = useLabStore((s) => s.items);
   const textCount = useLabStore((s) => s.texts.length);
   const addText = useLabStore((s) => s.addText);
@@ -44,10 +46,17 @@ export default function LabPage() {
   useEffect(() => {
     if (mounted.current) return;
     mounted.current = true;
-    const { keepOnce, setKeepOnce, clearCanvas: clear } = useLabStore.getState();
-    if (keepOnce) setKeepOnce(false);
+    const { keepOnce, setKeepOnce, clearCanvas: clear, addItemToCanvas: add } = useLabStore.getState();
+    // /lab?prefill=<itemId> (z.B. "Im Lab stylen" auf der Startseite): leeres Canvas mit genau diesem Teil.
+    // window.location statt useSearchParams: kein Suspense-Zwang, und der Effekt läuft ohnehin nur im Browser.
+    const prefill = new URLSearchParams(window.location.search).get("prefill");
+    if (prefill) {
+      clear();
+      if (useWardrobeStore.getState().items.some((i) => i.id === prefill)) add(prefill, { x: 100, y: 120 });
+      router.replace("/lab"); // Parameter entfernen, damit ein Reload nicht erneut vorausfüllt
+    } else if (keepOnce) setKeepOnce(false);
     else clear();
-  }, []);
+  }, [router]); // der Ref verhindert Mehrfach-Ausführung
 
   // Maus: ab 4px Bewegung. Touch: 150ms halten, damit Scrollen im Tray/auf der Seite weiter geht.
   const sensors = useSensors(

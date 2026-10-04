@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { uid } from "@/lib/mock/wardrobe";
+import { playNotificationSound } from "@/lib/utils/sounds";
 
-export type NotificationType = "like" | "chat" | "swap" | "reaction";
+export type NotificationType = "like" | "comment" | "reaction" | "chat" | "swap" | "purchase" | "sale" | "follow";
 
 export interface AppNotification {
   id: string;
@@ -24,10 +25,14 @@ export const useNotificationStore = create<NotificationState>()(
   persist(
     (set) => ({
       items: [],
-      add: (type, text, href) =>
+      add: (type, text, href) => {
         set((s) => ({
           items: [{ id: uid(), type, text, href, at: Date.now(), read: false }, ...s.items].slice(0, 30),
-        })),
+        }));
+        // Der Sound hängt am Typ des Ereignisses und kommt an genau einer Stelle: beim Eintreffen.
+        // (Die Glocke ist nicht auf jeder Seite sichtbar, deshalb nicht dort.)
+        playNotificationSound(type);
+      },
       markAllRead: () => set((s) => ({ items: s.items.map((n) => (n.read ? n : { ...n, read: true })) })),
       clear: () => set({ items: [] }),
     }),

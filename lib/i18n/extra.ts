@@ -117,6 +117,11 @@ const fr: Dict = {
   pick_category: "Choisir une catégorie",
   pick_color: "Choisir une couleur",
   vis_lab: "Labo",
+  today_style: "Styliser dans le Lab",
+  today_sell: "Vendre",
+  today_swap: "Échanger",
+  bg_remove: "Supprimer l'arrière-plan",
+  bg_removing: "Suppression de l'arrière-plan...",
   // @@FR
 };
 const es: Dict = {
@@ -232,6 +237,11 @@ const es: Dict = {
   pick_category: "Elegir categoría",
   pick_color: "Elegir color",
   vis_lab: "Lab",
+  today_style: "Combinar en el Lab",
+  today_sell: "Vender",
+  today_swap: "Intercambiar",
+  bg_remove: "Quitar fondo",
+  bg_removing: "Quitando el fondo...",
   // @@ES
 };
 const it: Dict = {
@@ -347,6 +357,11 @@ const it: Dict = {
   pick_category: "Scegli una categoria",
   pick_color: "Scegli un colore",
   vis_lab: "Lab",
+  today_style: "Crea look nel Lab",
+  today_sell: "Vendi",
+  today_swap: "Scambia",
+  bg_remove: "Rimuovi sfondo",
+  bg_removing: "Rimozione dello sfondo...",
   // @@IT
 };
 const tr: Dict = {
@@ -463,6 +478,11 @@ const tr: Dict = {
   pick_category: "Kategori seç",
   pick_color: "Renk seç",
   vis_lab: "Lab",
+  today_style: "Lab'da stillendir",
+  today_sell: "Sat",
+  today_swap: "Takas et",
+  bg_remove: "Arka planı kaldır",
+  bg_removing: "Arka plan kaldırılıyor...",
   // @@TR
 };
 const ar: Dict = {
@@ -578,6 +598,11 @@ const ar: Dict = {
   pick_category: "اختر الفئة",
   pick_color: "اختر اللون",
   vis_lab: "المختبر",
+  today_style: "نسّقه في المختبر",
+  today_sell: "بيع",
+  today_swap: "بدّل",
+  bg_remove: "إزالة الخلفية",
+  bg_removing: "جارٍ إزالة الخلفية...",
   // @@AR
 };
 

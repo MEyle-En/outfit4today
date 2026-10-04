@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { playSound } from "@/lib/sound";
 import { translate } from "@/lib/i18n/translate";
 import { uid } from "@/lib/mock/wardrobe";
 import { notify } from "@/lib/store/useNotificationStore";
@@ -62,7 +61,6 @@ export const useChatStore = create<ChatState>()(
       },
       receiveMessage: (meta, text) => {
         set((s) => ({ threads: append(s.threads, meta, { from: "them", text }) }));
-        playSound("cash"); // Geld-Rascheln bei eingehender Nachricht/Anfrage
         notify("chat", translate("notif_chat", { name: meta.counterpart, text }), "/marketplace");
       },
       clearAll: () => set({ threads: [] }),
@@ -72,7 +70,13 @@ export const useChatStore = create<ChatState>()(
 );
 
 /** Mock: nachdem ich etwas anbiete, fragt nach einer Weile jemand danach. */
-export function simulateBuyerInquiry(item: { id: string; name: string; image: string }) {
+export function simulateBuyerInquiry(item: {
+  id: string;
+  name: string;
+  image: string;
+  listing?: "swap" | "sell" | "both";
+  price?: number;
+}) {
   setTimeout(() => {
     useChatStore.getState().receiveMessage(
       {
@@ -86,4 +90,11 @@ export function simulateBuyerInquiry(item: { id: string; name: string; image: st
       translate("chat_q1"),
     );
   }, 8000);
+
+  // Verkaufsangebot mit Preis: später kommt eine echte Kauf-Anfrage (das ist der Fall für das Geld-Rascheln)
+  if (item.listing && item.listing !== "swap" && item.price != null) {
+    setTimeout(() => {
+      notify("purchase", translate("notif_purchase", { name: "Lea", item: item.name, price: item.price ?? 0 }), "/marketplace");
+    }, 16000);
+  }
 }

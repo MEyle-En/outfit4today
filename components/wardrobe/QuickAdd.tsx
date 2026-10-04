@@ -10,6 +10,7 @@ import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
 import { playSound } from "@/lib/sound";
 import { haptic } from "@/lib/utils/haptic";
+import { placeholderPhoto } from "@/lib/mock-data";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { FieldLabel } from "@/components/wardrobe/FieldLabel";
@@ -43,7 +44,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
       color: chosenColor,
       tags: withColor.map((tg) => (tg.kind === "category" ? { ...tg, label: categoryLabel(chosen) } : tg)),
       isPlaceholder: true,
-      image: `https://picsum.photos/seed/${encodeURIComponent(value)}/480/600`,
+      image: placeholderPhoto(chosen, chosenColor),
     });
     setText("");
     setBusy(false);

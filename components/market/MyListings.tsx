@@ -10,12 +10,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useBundleStore } from "@/lib/store/useBundleStore";
 import { useChatStore } from "@/lib/store/useChatStore";
+import { notify } from "@/lib/store/useNotificationStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import type { BundleListing, WardrobeItem } from "@/types";
 
 function ListingRow({ item }: { item: WardrobeItem }) {
   const { t } = useTranslation();
   const setListing = useWardrobeStore((s) => s.setListing);
+  const removeItem = useWardrobeStore((s) => s.removeItem);
   // Wichtig: Selektor liefert die stabile `threads`-Referenz; gefiltert wird erst danach.
   // (Ein `.filter()` im Selektor erzeugt bei jedem Aufruf ein neues Array -> "Maximum update depth exceeded".)
   const allThreads = useChatStore((s) => s.threads);
@@ -48,6 +50,19 @@ function ListingRow({ item }: { item: WardrobeItem }) {
           <Badge>{t("mine_public")}</Badge>
           {item.visibility.sharedWithCrew && <Badge>{t("vis_crew")}</Badge>}
         </div>
+
+        {item.listing !== "swap" && (
+          <button
+            onClick={() => {
+              // Verkauf abgeschlossen: das Teil verlässt den Wardrobe, die Benachrichtigung löst das Geld-Rascheln aus
+              notify("sale", t("notif_sale", { item: item.name, price: item.price ?? 0 }), "/marketplace");
+              removeItem(item.id);
+            }}
+            className="text-xs text-accent-soft underline underline-offset-2"
+          >
+            {t("mine_markSold")}
+          </button>
+        )}
 
         {thread ? (
           <Button size="sm" variant="glass" onClick={() => setChatOpen(true)}>

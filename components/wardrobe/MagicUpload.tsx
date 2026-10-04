@@ -2,12 +2,14 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Sparkles, UploadCloud, X } from "lucide-react";
+import { Check, Eraser, Loader2, RotateCcw, Sparkles, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TagChips } from "@/components/wardrobe/TagChips";
-import { analyzeImage } from "@/lib/ai/mock-ai";
-import { fileToDataUrl } from "@/lib/image";
+import { analyzeImage, detectColorFromText } from "@/lib/ai/mock-ai";
+import { blobToCompactDataUrl, fileToDataUrl } from "@/lib/image";
+import { toast } from "@/lib/store/useToastStore";
+import { removeBackgroundFromImage } from "@/lib/utils/backgroundRemover";
 import { uid } from "@/lib/mock/wardrobe";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,11 @@ interface Draft {
   color?: ItemColor;
   tags: ItemTag[];
   status: "analyzing" | "ready";
+  /** Originaldatei (für die Hintergrund-Entfernung) */
+  file?: File;
+  /** Bild vor dem Freistellen, damit es wiederhergestellt werden kann */
+  original?: string;
+  removing?: boolean;
 }
 
 export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) {
@@ -45,6 +52,21 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const patch = (id: string, p: Partial<Draft>) =>
     setDrafts((d) => d.map((x) => (x.id === id ? { ...x, ...p } : x)));
 
+  const removeBg = async (d: Draft) => {
+    if (!d.file || d.removing) return;
+    patch(d.id, { removing: true });
+    try {
+      const blob = await removeBackgroundFromImage(d.file);
+      const image = await blobToCompactDataUrl(blob, 800);
+      patch(d.id, { image, original: d.original ?? d.image, removing: false });
+      playSound("success");
+    } catch {
+      // Original bleibt erhalten
+      patch(d.id, { removing: false });
+      toast(tr("bg_failed"), tr("bg_failedHint"), "error");
+    }
+  };
+
   const handleFiles = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (!files.length) return;
@@ -52,7 +74,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     // Bulk: alle Drafts sofort als Skeleton anzeigen, Analyse läuft parallel
     const created: { draft: Draft; file: File }[] = files.map((file) => ({
       file,
-      draft: { id: uid(), image: "", name: "", category: "top", tags: [], status: "analyzing" },
+      draft: { id: uid(), image: "", name: "", category: "top", tags: [], status: "analyzing", file },
     }));
     setDrafts((d) => [...created.map((c) => c.draft), ...d]);
 
@@ -62,7 +84,8 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
           const [image, ai] = await Promise.all([fileToDataUrl(file), analyzeImage(file.name)]);
           // Farbe wirklich aus dem Bild lesen; nur wenn das scheitert, gilt der Vorschlag der Mock-KI
           const detected = await detectDominantColor(image);
-          const color = detected ?? ai.color;
+          // Reihenfolge: Farbname im Dateinamen -> Farbe aus den Pixeln -> Vorschlag der Mock-KI
+          const color = detectColorFromText(file.name) ?? detected ?? ai.color;
           const tags = color ? syncTag(ai.tags, "color", colorLabel(color)) : ai.tags;
           const name = color ? withColorName(ai.name, color) : ai.name;
           patch(draft.id, { image, name, category: ai.category, color, tags, status: "ready" });
@@ -148,10 +171,16 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                   </div>
                 </div>
               </div>
+            ) : d.removing ? (
+              <div className="flex flex-col items-center gap-4 p-8" role="status">
+                <div className="h-16 w-16 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+                <p className="font-medium text-white">{tr("bg_removing")}</p>
+                <p className="text-sm text-zinc-400">{tr("bg_removingHint")}</p>
+              </div>
             ) : (
               <div className="flex gap-3 p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={d.image} alt={d.name} className="h-28 w-24 shrink-0 rounded-xl object-cover" />
+                <img src={d.image} alt={d.name} className="h-28 w-24 shrink-0 rounded-xl bg-black/30 object-cover" />
                 <div className="min-w-0 flex-1 space-y-2">
                   {d.category === "lifestyle" && <CategoryBadge category="lifestyle" />}
                   <div className="flex items-start justify-between gap-2">
@@ -170,6 +199,24 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                     </button>
                   </div>
                   <TagChips tags={d.tags} onChange={(tags) => patch(d.id, { tags })} />
+                  {d.file &&
+                    (d.original ? (
+                      <button
+                        type="button"
+                        onClick={() => patch(d.id, { image: d.original, original: undefined })}
+                        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" /> {tr("bg_restore")}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void removeBg(d)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-accent-soft hover:text-white"
+                      >
+                        <Eraser className="h-3.5 w-3.5" /> {tr("bg_remove")}
+                      </button>
+                    ))}
                   <FieldLabel>{tr("pick_category")}</FieldLabel>
                   <CategoryPicker
                     value={d.category}

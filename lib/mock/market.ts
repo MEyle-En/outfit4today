@@ -1,3 +1,4 @@
+import { MOCK_ITEMS } from "@/lib/mock-data";
 import type { BundleListing, ItemCategory, ItemColor, VibeId, WardrobeItem } from "@/types";
 
 export interface MarketListing {
@@ -16,50 +17,41 @@ export interface MarketListing {
   bundle?: { count: number; onlyTogether: boolean; images: string[] };
 }
 
-const img = (seed: string) => `https://picsum.photos/seed/market-${seed}/480/600`;
+const SELLERS: Record<string, string> = { "f-mila": "Mila", "f-jonas": "Jonas", "f-lea": "Lea", "f-ava": "Ava" };
 
-const l = (
-  id: string,
-  seller: string,
-  name: string,
-  category: ItemCategory,
-  color: ItemColor,
-  vibe: VibeId,
-  mode: "swap" | "sell" | "both",
-  price?: number,
-): MarketListing => ({ id: `m-${id}`, seller, name, image: img(id), category, color, vibe, mode, price });
-
-/** Öffentliche Listings der Community (Mock). */
+/** Öffentliche Listings der Community: alle angebotenen Katalog-Teile der Freunde. */
 export const MARKET_LISTINGS: MarketListing[] = [
-  l("1", "Mila", "Baggy Cargo Pants", "bottom", "black", "streetwear", "sell", 35),
-  l("2", "Jonas", "Oversized Hoodie", "top", "gray", "streetwear", "swap"),
-  l("3", "Lea", "Y2K Baby Tee", "top", "pink", "y2k", "sell", 12),
-  l("4", "Ava", "Low Rise Jeans", "bottom", "blue", "y2k", "sell", 28),
-  l("5", "Noah", "Wool Trench Coat", "outerwear", "beige", "minimal", "sell", 85),
-  l("6", "Zoe", "Minimal Leather Bag", "bag", "black", "minimal", "swap"),
-  l("7", "Jonas", "Shell Jacket", "outerwear", "green", "gorpcore", "sell", 60),
-  l("8", "Elias", "Trail Runner", "shoes", "gray", "gorpcore", "swap"),
-  l("9", "Ava", "Vintage Denim Jacket", "outerwear", "blue", "vintage", "sell", 40),
-  l("10", "Mila", "Retro Wristwatch", "accessory", "brown", "vintage", "swap"),
-  l("11", "Elias", "Tweed Blazer", "outerwear", "brown", "dark-academia", "sell", 55),
-  l("12", "Lea", "Knit Vest", "top", "beige", "dark-academia", "swap"),
-  l("13", "Zoe", "Platform Sneakers", "shoes", "white", "streetwear", "sell", 45),
-  l("14", "Lea", "Silver Chain", "jewelry", "gray", "y2k", "sell", 15),
-  l("15", "Noah", "Bucket Hat", "hat", "black", "streetwear", "sell", 18),
-  l("16", "Ava", "Slip Dress", "dress", "purple", "y2k", "swap"),
-  l("17", "Mila", "Jersey Hijab Set", "hijab", "beige", "minimal", "sell", 22),
-  l("18", "Jonas", "Skateboard Deck", "lifestyle", "multicolor", "streetwear", "sell", 30),
-  l("19", "Zoe", "Vintage Band Tee", "top", "black", "vintage", "both", 25),
-  l("20", "Elias", "Corduroy Pants", "bottom", "brown", "dark-academia", "sell", 19),
-  {
-    ...l("b1", "Mila", "3-Teil Set: Cargo + Tee + Bomber", "bottom", "black", "streetwear", "sell", 70),
-    bundle: { count: 3, onlyTogether: true, images: [img("b1a"), img("b1b"), img("b1c")] },
-  },
-  {
-    ...l("b2", "Lea", "2-Teil Set: Slip Dress + Cardigan", "dress", "purple", "y2k", "sell", 45),
-    bundle: { count: 2, onlyTogether: false, images: [img("b2a"), img("b2b")] },
-  },
+  ...MOCK_ITEMS.filter((m) => m.owner !== "me" && m.listing).map((m) => ({
+    id: `m-${m.id}`,
+    seller: SELLERS[m.owner],
+    name: m.name,
+    image: m.photo,
+    category: m.category,
+    color: m.color,
+    vibe: m.vibe,
+    mode: m.listing!,
+    price: m.listing === "swap" ? undefined : m.price,
+  })),
+  // Bundles: mehrere Teile eines Freundes zum Set-Preis
+  bundleOf("b1", "Mila", "3-Teil Set: Pink Tee + Red Dress + Gold Necklace", ["f-mila-1", "f-mila-2", "f-mila-3"], 120, "y2k", true),
+  bundleOf("b2", "Ava", "2-Teil Set: Plaid Skirt + Little Black Dress", ["f-ava-1", "f-ava-2"], 65, "minimal", false),
 ];
+
+function bundleOf(id: string, seller: string, name: string, itemIds: string[], price: number, vibe: VibeId, onlyTogether: boolean): MarketListing {
+  const parts = itemIds.map((i) => MOCK_ITEMS.find((m) => m.id === i)!);
+  return {
+    id: `m-${id}`,
+    seller,
+    name,
+    image: parts[0].photo,
+    category: parts[0].category,
+    color: parts[0].color,
+    vibe,
+    mode: "sell",
+    price,
+    bundle: { count: parts.length, onlyTogether, images: parts.map((p) => p.photo).slice(0, 3) },
+  };
+}
 
 /** Meine Bundles als Marketplace-Einträge (Bild = erstes Teil, Vorschau = bis zu 3 Teile). */
 export function myBundleListings(bundles: BundleListing[], items: WardrobeItem[]): MarketListing[] {

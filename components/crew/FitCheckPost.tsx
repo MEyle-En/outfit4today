@@ -31,7 +31,12 @@ function Avatar({ id, size = "h-9 w-9" }: { id: string; size?: string }) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={avatar} alt="" className={cn("shrink-0 rounded-full object-cover", size)} />;
   }
-  return <div className={cn("shrink-0 rounded-full bg-gradient-to-br", getPerson(id).gradient, size)} />;
+  const person = getPerson(id);
+  if (person.avatar) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={person.avatar} alt={person.name} className={cn("shrink-0 rounded-full object-cover", size)} />;
+  }
+  return <div className={cn("shrink-0 rounded-full bg-gradient-to-br", person.gradient, size)} />;
 }
 
 function SwapCard({ comment }: { comment: FitComment }) {

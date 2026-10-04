@@ -96,6 +96,8 @@ export type ReactionType = "fire" | "idea" | "want";
 
 export interface Person {
   id: string;
+  /** Porträtfoto (Unsplash); ohne Foto wird der Farbverlauf gezeigt */
+  avatar?: string;
   name: string;
   handle: string;
   gradient: string;

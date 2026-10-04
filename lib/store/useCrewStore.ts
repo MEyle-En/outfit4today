@@ -90,6 +90,10 @@ export const useCrewStore = create<CrewState>()(
 
         // Asynchrones Verhalten simulieren (Mock): Reaktion, Tauschvorschlag, Likes
         setTimeout(() => {
+          get().addComment(post.id, { authorId: "f-mila", kind: "comment", text: translate("reply_comment") });
+          notify("comment", translate("notif_comment", { name: "Mila" }), "/wardrobe");
+        }, 4500);
+        setTimeout(() => {
           get().toggleReaction(post.id, "fire", "f-jonas");
           notify("reaction", translate("notif_reaction", { name: "Jonas" }), "/wardrobe");
         }, 2500);
@@ -157,6 +161,17 @@ export const useCrewStore = create<CrewState>()(
     }),
     {
       name: STORAGE.crew,
+      version: 2,
+      // v2: neue Seed-Posts mit echten Kleidungsfotos und eine vierte Person (Ava) in der Crew
+      migrate: (persisted, version) => {
+        const s = persisted as { crews?: Crew[]; posts?: FitPost[]; activeCrewId?: string | null };
+        if (version >= 2) return s as unknown as CrewState;
+        return {
+          ...s,
+          crews: (s.crews ?? SEED_CREWS).map((c) => (c.id === "crew-main" ? { ...c, memberIds: SEED_CREWS[0].memberIds } : c)),
+          posts: [...(s.posts ?? []).filter((p) => !p.id.startsWith("seed-")), ...SEED_POSTS],
+        } as unknown as CrewState;
+      },
       partialize: (s) => ({ crews: s.crews, activeCrewId: s.activeCrewId, posts: s.posts }),
     },
   ),

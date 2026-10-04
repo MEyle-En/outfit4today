@@ -141,7 +141,12 @@ export function CrewView() {
           <div className="flex items-center justify-between">
             <div className="flex -space-x-2">
               {crew.memberIds.map((id) => (
-                <div key={id} title={getPerson(id).name} className={cn("h-8 w-8 rounded-full border-2 border-surface bg-gradient-to-br", getPerson(id).gradient)} />
+                getPerson(id).avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={id} src={getPerson(id).avatar} alt={getPerson(id).name} title={getPerson(id).name} className="h-8 w-8 rounded-full border-2 border-surface object-cover" />
+                ) : (
+                  <div key={id} title={getPerson(id).name} className={cn("h-8 w-8 rounded-full border-2 border-surface bg-gradient-to-br", getPerson(id).gradient)} />
+                )
               ))}
             </div>
             <span className="text-xs text-zinc-500">{t("crew_members", { n: crew.memberIds.length + 1 })}</span>

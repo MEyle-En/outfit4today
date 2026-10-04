@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Bell, Flame, Heart, MessageCircle } from "lucide-react";
+import { ArrowLeftRight, Bell, Coins, Flame, Heart, MessageCircle, MessageSquare, ShoppingBag, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -14,6 +14,10 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   chat: MessageCircle,
   swap: ArrowLeftRight,
   reaction: Flame,
+  comment: MessageSquare,
+  purchase: ShoppingBag,
+  sale: Coins,
+  follow: UserPlus,
 };
 
 /** Glocke mit Zähler; öffnet die Liste als Bottom-Sheet und markiert beim Öffnen alles als gelesen. */

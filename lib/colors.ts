@@ -41,6 +41,15 @@ const RULES: [RegExp, ItemColor][] = [
   [/rosa|pink|rose/, "pink"],
   [/lila|violett|purple|lavendel/, "purple"],
   [/orange|apricot/, "orange"],
+  // FR / ES / IT: nur exakte Wörter
+  [/^(noir|negro|nero)$/, "black"],
+  [/^(blanc|blanche|blanco|bianco)$/, "white"],
+  [/^(gris|grigio)$/, "gray"],
+  [/^(bleu|azul)$/, "blue"],
+  [/^(rouge|rojo|rosso)$/, "red"],
+  [/^(vert|verte|verde)$/, "green"],
+  [/^(jaune|amarillo|giallo)$/, "yellow"],
+  [/^(marron|marrone)$/, "brown"],
 ];
 
 /** Freitext ("Hellblau", "Navy", "black", "Schwarze Jeans") -> ItemColor. Liefert das erste Wort, das passt. */

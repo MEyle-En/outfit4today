@@ -74,3 +74,26 @@ export function rotateImage(src: string, degrees: 90 | 180 | 270, maxSize = 800,
     img.src = src;
   });
 }
+
+/** Blob (z.B. freigestelltes Bild mit Transparenz) auf max. `maxSize` px verkleinern und als Data-URL liefern (WebP, sonst PNG). */
+export function blobToCompactDataUrl(blob: Blob, maxSize = 800, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      // WebP behält die Transparenz und ist viel kleiner als PNG; Browser ohne WebP-Export liefern automatisch PNG
+      resolve(canvas.toDataURL("image/webp", quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Bild konnte nicht gelesen werden"));
+    };
+    img.src = url;
+  });
+}

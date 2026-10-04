@@ -1,45 +1,34 @@
 import { categoryLabel } from "@/lib/categories";
-import { colorFromLabel } from "@/lib/colors";
+import { colorLabel } from "@/lib/colors";
+import { MOCK_ITEMS, type MockItem } from "@/lib/mock-data";
 import { daysAgoIso } from "@/lib/wear";
-import type { ItemCategory, ItemTag, TagKind, WardrobeItem } from "@/types";
-
-const img = (seed: string) => `https://picsum.photos/seed/${seed}/480/600`;
+import type { ItemTag, TagKind, WardrobeItem } from "@/types";
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const tag = (kind: TagKind, label: string): ItemTag => ({ id: uid(), kind, label });
 
-const mock = (
-  id: string,
-  name: string,
-  seed: string,
-  category: ItemCategory,
-  color: string,
-  material: string,
-  createdAt: number,
-  wear: { count: number; daysAgo?: number } = { count: 0 },
-): WardrobeItem => ({
-  id,
-  name,
-  image: img(seed),
-  isPlaceholder: false,
-  category,
-  color: colorFromLabel(color),
-  visibility: { isPrivate: false, sharedWithCrew: true, onMarketplace: false, availableInLab: true },
-  wearCount: wear.count,
-  lastWorn: wear.daysAgo != null ? daysAgoIso(wear.daysAgo) : undefined,
-  createdAt,
-  tags: [tag("category", categoryLabel(category)), tag("color", color), tag("material", material)],
-});
+/** Katalog-Eintrag (lib/mock-data.ts) -> WardrobeItem. */
+export function buildMockItem(m: MockItem, createdAt: number): WardrobeItem {
+  const listed = !!m.listing;
+  return {
+    id: m.id,
+    name: m.name,
+    image: m.photo,
+    isPlaceholder: false,
+    category: m.category,
+    color: m.color,
+    // Teile sind für die Crew sichtbar; angebotene zusätzlich im Marketplace
+    visibility: { isPrivate: false, sharedWithCrew: true, onMarketplace: listed, availableInLab: true },
+    listing: m.listing,
+    price: m.listing && m.listing !== "swap" ? m.price : undefined,
+    wearCount: m.wear?.count ?? 0,
+    lastWorn: m.wear?.daysAgo != null ? daysAgoIso(m.wear.daysAgo) : undefined,
+    // kleine Zahlen = "alt" (kein 14-Tage-Neuheitsschutz bei Vergessene Schätze)
+    createdAt,
+    tags: [tag("category", categoryLabel(m.category)), tag("color", colorLabel(m.color)), tag("material", m.material)],
+  };
+}
 
-export const MOCK_WARDROBE: WardrobeItem[] = [
-  mock("w1", "Vintage Jeans", "wardrobe-jeans", "bottom", "Hellblau", "Denim", 1, { count: 12, daysAgo: 3 }),
-  mock("w2", "Oversized Hoodie", "wardrobe-hoodie", "top", "Schwarz", "Baumwolle", 2, { count: 30, daysAgo: 1 }),
-  mock("w3", "Chunky Sneakers", "wardrobe-sneakers", "shoes", "Weiß", "Leder", 3, { count: 5, daysAgo: 95 }),
-  mock("w4", "Puffer Jacket", "wardrobe-puffer", "outerwear", "Lila", "Nylon", 4),
-  mock("w5", "Monstera Plant", "wardrobe-monstera", "lifestyle", "Grün", "Natur", 5),
-  mock("w6", "Retro Camera", "wardrobe-camera", "lifestyle", "Schwarz", "Metall", 6),
-];
-
-/** Wird auch vom Crew-Mock genutzt. */
-export { mock as buildMockItem };
+/** Dein Wardrobe zu Beginn. */
+export const MOCK_WARDROBE: WardrobeItem[] = MOCK_ITEMS.filter((m) => m.owner === "me").map((m, i) => buildMockItem(m, i + 1));

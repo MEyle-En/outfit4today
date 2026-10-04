@@ -20,16 +20,19 @@ export function ListItemDialog({
   open,
   onOpenChange,
   initialSelected = [],
+  initialMode = "sell",
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   /** Items, die beim Öffnen schon ausgewählt sind (z.B. aus "Vergessene Schätze" oder der Item-Karte) */
   initialSelected?: string[];
+  /** Vorbelegter Modus (z.B. "swap" beim Tauschen-Button) */
+  initialMode?: Mode;
 }) {
   const { t } = useTranslation();
   const items = useWardrobeStore((s) => s.items);
   const setListing = useWardrobeStore((s) => s.setListing);
-  const [mode, setMode] = useState<Mode>("sell");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [price, setPrice] = useState("");
 
@@ -48,7 +51,9 @@ export function ListItemDialog({
   const submit = () => {
     if (!canSubmit) return;
     setListing(selected, mode, needsPrice ? priceValue : undefined);
-    items.filter((i) => selected.includes(i.id)).forEach(simulateBuyerInquiry);
+    items
+      .filter((i) => selected.includes(i.id))
+      .forEach((i) => simulateBuyerInquiry({ id: i.id, name: i.name, image: i.image, listing: mode, price: needsPrice ? priceValue : undefined }));
     toast(t("toast_listed"), t("toast_listedCount", { n: selected.length }));
     setSelected([]);
     setPrice("");
