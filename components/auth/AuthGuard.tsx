@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { useHydrated } from "@/hooks/useHydrated";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
@@ -43,6 +44,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (target) router.replace(target);
   }, [target, router]);
 
-  if (!hydrated || target) return <div className="min-h-dvh" aria-busy="true" />;
+  if (!hydrated || target) return <PageSkeleton />;
   return <>{children}</>;
 }

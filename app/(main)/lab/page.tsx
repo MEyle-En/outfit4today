@@ -18,6 +18,7 @@ import { SendToCrewButton } from "@/components/lab/SendToCrewButton";
 import { TrayThumb, WardrobeSidebar } from "@/components/lab/WardrobeSidebar";
 import { Button } from "@/components/ui/button";
 import { playSound } from "@/lib/sound";
+import { haptic } from "@/lib/utils/haptic";
 import { useTranslation } from "@/hooks/useTranslation";
 import { CANVAS_ID, DEFAULT_SIZE, itemHeight, snapToCanvas } from "@/lib/lab";
 import { useLabStore } from "@/lib/store/useLabStore";
@@ -71,6 +72,7 @@ export default function LabPage() {
     const cy = r.top + r.height / 2 - top - itemHeight(DEFAULT_SIZE) / 2;
     addItemToCanvas(String(active.id).slice("tray:".length), snapToCanvas(cx, cy, DEFAULT_SIZE, cw, ch));
     playSound("whoosh");
+    haptic("medium");
   };
 
   const isEmpty = canvasItems.length === 0 && textCount === 0;

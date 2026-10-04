@@ -1,48 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Eye, EyeOff, Pencil, Store, Tag, Trash2 } from "lucide-react";
 import { ListItemDialog } from "@/components/profile/ListItemDialog";
 import { Badge } from "@/components/ui/badge";
 import { CategoryBadge } from "@/components/wardrobe/CategoryBadge";
 import { EditItemDialog } from "@/components/wardrobe/EditItemDialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import { stagger } from "@/lib/stagger";
 import { toast } from "@/lib/store/useToastStore";
 import { cn } from "@/lib/utils";
 import type { WardrobeItem } from "@/types";
 
-const actionBtn =
-  "grid h-9 w-9 place-items-center rounded-full backdrop-blur-md transition-colors active:scale-90";
+const actionBtn = "icon-btn grid h-9 w-9 place-items-center rounded-full backdrop-blur-md transition-colors";
 
 export function ItemCard({
   item,
   onRemove,
-  onToggleShared,
+  onTogglePrivate,
+  index = 0,
 }: {
   item: WardrobeItem;
   onRemove: () => void;
-  onToggleShared: () => void;
+  onTogglePrivate: () => void;
+  /** Position in der Liste (für die gestaffelte Eingangs-Animation) */
+  index?: number;
 }) {
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
   const [sellOpen, setSellOpen] = useState(false);
   const rest = item.tags.filter((tg) => tg.kind !== "category");
-  const visible = item.sharedWithCrew;
+  const visible = !item.visibility.isPrivate;
+  const onMarket = item.visibility.onMarketplace;
 
   const toggle = () => {
-    onToggleShared();
+    onTogglePrivate();
     toast(t("toast_visibility"), visible ? t("toast_nowPrivate") : t("toast_nowVisible"));
   };
 
   return (
-    <motion.article
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-      className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface"
+    <article
+      style={stagger(index)}
+      className="animate-fade-in-up card-lift group relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={item.image} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
@@ -51,7 +50,7 @@ export function ItemCard({
         <button
           onClick={onRemove}
           aria-label={t("item_delete", { name: item.name })}
-          className="grid h-8 w-8 place-items-center rounded-full bg-black/50 text-zinc-300 opacity-0 backdrop-blur-md transition-opacity hover:text-white focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
+          className="icon-btn grid h-8 w-8 place-items-center rounded-full bg-black/50 text-zinc-300 opacity-0 backdrop-blur-md transition-opacity hover:text-white focus-visible:opacity-100 group-hover:opacity-100 max-md:opacity-100"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -83,7 +82,7 @@ export function ItemCard({
         >
           <Pencil className="h-4 w-4" />
         </button>
-        {!item.listing && (
+        {!onMarket && (
           <button
             type="button"
             onClick={() => setSellOpen(true)}
@@ -100,7 +99,7 @@ export function ItemCard({
         <p className="truncate font-display text-base font-semibold leading-tight">{item.name}</p>
         <div className="flex flex-wrap gap-1.5">
           <CategoryBadge category={item.category} />
-          {item.listing && (
+          {onMarket && (
             <Badge className="border-amber-300/40 bg-amber-400/20 text-amber-200">
               <Store className="h-3 w-3" /> 💰 {t("item_listed")}
             </Badge>
@@ -117,6 +116,6 @@ export function ItemCard({
       {/* Dialoge nur bei Bedarf einhängen (pro Karte wäre sonst je ein Dialog aktiv) */}
       {editOpen && <EditItemDialog item={item} open onOpenChange={setEditOpen} />}
       {sellOpen && <ListItemDialog open onOpenChange={setSellOpen} initialSelected={[item.id]} />}
-    </motion.article>
+    </article>
   );
 }

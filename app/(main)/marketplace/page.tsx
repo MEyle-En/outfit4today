@@ -165,8 +165,8 @@ export default function MarketplacePage() {
             />
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {shown.map(({ listing, match }) => (
-                <MarketCard key={listing.id} listing={listing} match={personalized ? match : undefined} />
+              {shown.map(({ listing, match }, i) => (
+                <MarketCard key={listing.id} listing={listing} match={personalized ? match : undefined} index={i} />
               ))}
             </div>
           )}

@@ -17,6 +17,28 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+@layer components {
+  /* Icon-Buttons (Herz, Auge, Stift …): leichtes Wachsen beim Hover, Eindrücken beim Klick */
+  .icon-btn {
+    @apply transition-transform duration-150 hover:scale-110 active:scale-90;
+  }
+  /* Karten: sanftes Anheben beim Hover */
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40;
+  }
+}
+
+/* Bewegungsempfindliche Nutzer: Animationen praktisch abschalten */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer utilities {
   .glass {
     @apply border border-white/10 bg-white/5 backdrop-blur-xl;

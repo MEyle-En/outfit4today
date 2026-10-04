@@ -13,9 +13,12 @@ import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { cn } from "@/lib/utils";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
 import { playSound } from "@/lib/sound";
+import { haptic } from "@/lib/utils/haptic";
 import { useTranslation } from "@/hooks/useTranslation";
+import { detectDominantColor, withColorName } from "@/lib/image-color";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
+import { FieldLabel } from "@/components/wardrobe/FieldLabel";
 import { CategoryBadge } from "@/components/wardrobe/CategoryBadge";
 import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
@@ -56,8 +59,13 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     await Promise.all(
       created.map(async ({ draft, file }) => {
         try {
-          const [image, ai] = await Promise.all([fileToDataUrl(file), analyzeImage()]);
-          patch(draft.id, { image, name: ai.name, category: ai.category, color: ai.color, tags: ai.tags, status: "ready" });
+          const [image, ai] = await Promise.all([fileToDataUrl(file), analyzeImage(file.name)]);
+          // Farbe wirklich aus dem Bild lesen; nur wenn das scheitert, gilt der Vorschlag der Mock-KI
+          const detected = await detectDominantColor(image);
+          const color = detected ?? ai.color;
+          const tags = color ? syncTag(ai.tags, "color", colorLabel(color)) : ai.tags;
+          const name = color ? withColorName(ai.name, color) : ai.name;
+          patch(draft.id, { image, name, category: ai.category, color, tags, status: "ready" });
         } catch {
           setDrafts((d) => d.filter((x) => x.id !== draft.id));
         }
@@ -71,6 +79,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const save = () => {
     addItems(ready.map(({ name, image, tags, category, color }) => ({ name, image, tags, category, color })));
     playSound("success");
+    haptic("success");
     onSaved?.(ready.length);
     setDrafts((d) => d.filter((x) => x.status !== "ready"));
   };
@@ -161,9 +170,11 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                     </button>
                   </div>
                   <TagChips tags={d.tags} onChange={(tags) => patch(d.id, { tags })} />
+                  <FieldLabel>{tr("pick_category")}</FieldLabel>
                   <CategoryPicker
                     value={d.category}
                     options={categoryOptions}
+                    wrap
                     onChange={(category) =>
                       patch(d.id, {
                         category,
@@ -172,6 +183,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                       })
                     }
                   />
+                  <FieldLabel>{tr("pick_color")}</FieldLabel>
                   <ColorPicker
                     value={d.color}
                     onChange={(c) => c && patch(d.id, { color: c, tags: syncTag(d.tags, "color", colorLabel(c)) })}

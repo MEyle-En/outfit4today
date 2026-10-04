@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import { RotateCw, X } from "lucide-react";
 import { playSound } from "@/lib/sound";
+import { haptic } from "@/lib/utils/haptic";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Badge } from "@/components/ui/badge";
 import { ASPECT, GRID, MAX_SIZE, MIN_SIZE, ROTATE_STEP, itemHeight, snapToCanvas } from "@/lib/lab";
@@ -108,6 +109,7 @@ export function DraggableItem({ canvasItem, item, zIndex, selected, onSelect }: 
       onDragStop={(_e, d) => {
         updateItemPosition(id, { x: d.x, y: d.y });
         playSound("whoosh"); // Item rastet ins Raster ein
+        haptic("light");
       }}
       onResizeStop={(_e, _dir, ref, _delta, pos) => {
         const parent = ref.parentElement;

@@ -110,6 +110,13 @@ const fr: Dict = {
   auth_or: "ou",
   auth_logout: "Se déconnecter",
   sound_effects: "Effets sonores",
+  edit_rotation: "Pivoter l'image",
+  today_title: "Tu pourrais porter aujourd'hui",
+  today_worn: "Porté aujourd'hui",
+  today_skip: "Passer",
+  pick_category: "Choisir une catégorie",
+  pick_color: "Choisir une couleur",
+  vis_lab: "Labo",
   // @@FR
 };
 const es: Dict = {
@@ -218,6 +225,13 @@ const es: Dict = {
   auth_or: "o",
   auth_logout: "Cerrar sesión",
   sound_effects: "Efectos de sonido",
+  edit_rotation: "Girar imagen",
+  today_title: "Hoy podrías llevar",
+  today_worn: "Usado hoy",
+  today_skip: "Omitir",
+  pick_category: "Elegir categoría",
+  pick_color: "Elegir color",
+  vis_lab: "Lab",
   // @@ES
 };
 const it: Dict = {
@@ -326,6 +340,13 @@ const it: Dict = {
   auth_or: "o",
   auth_logout: "Esci",
   sound_effects: "Effetti sonori",
+  edit_rotation: "Ruota immagine",
+  today_title: "Oggi potresti indossare",
+  today_worn: "Indossato oggi",
+  today_skip: "Salta",
+  pick_category: "Scegli una categoria",
+  pick_color: "Scegli un colore",
+  vis_lab: "Lab",
   // @@IT
 };
 const tr: Dict = {
@@ -435,6 +456,13 @@ const tr: Dict = {
   auth_or: "veya",
   auth_logout: "Çıkış yap",
   sound_effects: "Ses efektleri",
+  edit_rotation: "Görseli döndür",
+  today_title: "Bugün giyebilirsin",
+  today_worn: "Bugün giydim",
+  today_skip: "Atla",
+  pick_category: "Kategori seç",
+  pick_color: "Renk seç",
+  vis_lab: "Lab",
   // @@TR
 };
 const ar: Dict = {
@@ -543,6 +571,13 @@ const ar: Dict = {
   auth_or: "أو",
   auth_logout: "تسجيل الخروج",
   sound_effects: "المؤثرات الصوتية",
+  edit_rotation: "تدوير الصورة",
+  today_title: "يمكنك ارتداؤه اليوم",
+  today_worn: "ارتديته اليوم",
+  today_skip: "تخطي",
+  pick_category: "اختر الفئة",
+  pick_color: "اختر اللون",
+  vis_lab: "المختبر",
   // @@AR
 };
 

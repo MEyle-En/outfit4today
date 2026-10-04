@@ -39,7 +39,7 @@ export function ListItemDialog({
     { id: "both", label: t("mode_both"), icon: Repeat },
   ];
 
-  const available = items.filter((i) => !i.listing);
+  const available = items.filter((i) => !i.visibility.onMarketplace);
   const needsPrice = mode !== "swap";
   const priceValue = Number(price);
   const priceValid = !needsPrice || (price !== "" && priceValue > 0);

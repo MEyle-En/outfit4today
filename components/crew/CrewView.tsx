@@ -15,6 +15,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
 import { FRIEND_ITEMS, MOCK_FRIENDS, getPerson } from "@/lib/mock/crew";
 import { inviteLink, useCrewStore, type CrewTab } from "@/lib/store/useCrewStore";
+import { stagger } from "@/lib/stagger";
 import { cn } from "@/lib/utils";
 import type { ItemCategory } from "@/types";
 
@@ -91,7 +92,7 @@ export function CrewView() {
       FRIEND_ITEMS.filter(
         (i) =>
           crew?.memberIds.includes(i.ownerId) &&
-          i.sharedWithCrew && // Privacy: nur freigegebene Teile
+          i.visibility.sharedWithCrew && // Privacy: nur freigegebene Teile
           (owner === "all" || i.ownerId === owner) &&
           (category === "all" || i.category === category),
       ),
@@ -175,7 +176,7 @@ export function CrewView() {
               onAction={() => router.push("/lab")}
             />
           ) : (
-            publicPosts.map((p) => <FitCheckPost key={p.id} post={p} />)
+            publicPosts.map((p, i) => <FitCheckPost key={p.id} post={p} index={i} />)
           )}
         </TabsContent>
 
@@ -191,7 +192,7 @@ export function CrewView() {
               onAction={() => router.push("/lab")}
             />
           ) : (
-            posts.map((p) => <FitCheckPost key={p.id} post={p} />)
+            posts.map((p, i) => <FitCheckPost key={p.id} post={p} index={i} />)
           )}
         </TabsContent>
 
@@ -217,8 +218,8 @@ export function CrewView() {
               <CategoryPicker value={category} options={CATEGORY_FILTER} onChange={setCategory} />
 
               <div className="grid grid-cols-2 gap-3">
-                {friendItems.map((i) => (
-                  <article key={i.id} className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface">
+                {friendItems.map((i, n) => (
+                  <article key={i.id} style={stagger(n)} className="animate-fade-in-up card-lift relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={i.image} alt={i.name} loading="lazy" className="h-full w-full object-cover" />
                     <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-12">

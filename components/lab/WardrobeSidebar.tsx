@@ -53,7 +53,9 @@ function DraggableThumb({ item, className }: { item: WardrobeItem; className?: s
 /** Auf Mobile als Tray unter dem Canvas: Streifen (scrollbar) oder aufgeklapptes Grid. */
 export function WardrobeSidebar() {
   const { t } = useTranslation();
-  const all = useWardrobeStore((s) => s.items);
+  const everything = useWardrobeStore((s) => s.items);
+  // Nur Teile, die im Lab nutzbar sind (Standard: alle)
+  const all = everything.filter((i) => i.visibility.availableInLab);
   const [expanded, setExpanded] = useState(false);
   const [group, setGroup] = useState<"all" | "clothes" | "vibe">("all");
   // Lifestyle-Items ("Vibe") liegen neben der Kleidung im selben Tray und verhalten sich auf dem Canvas identisch

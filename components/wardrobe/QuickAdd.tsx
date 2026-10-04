@@ -9,8 +9,10 @@ import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
 import { playSound } from "@/lib/sound";
+import { haptic } from "@/lib/utils/haptic";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
+import { FieldLabel } from "@/components/wardrobe/FieldLabel";
 import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
 import type { ItemCategory, ItemColor } from "@/types";
@@ -46,6 +48,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
     setText("");
     setBusy(false);
     playSound("success");
+    haptic("success");
     onSaved?.(1);
   };
 
@@ -74,8 +77,14 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
           </Button>
         </div>
-        <CategoryPicker value={category} options={QUICK_OPTIONS} onChange={setCategory} className="mt-3" />
-        <ColorPicker value={color} onChange={setColor} noneLabel={t("quick_auto")} className="mt-2" />
+        <div className="mt-3">
+          <FieldLabel>{t("pick_category")}</FieldLabel>
+          <CategoryPicker value={category} options={QUICK_OPTIONS} onChange={setCategory} wrap />
+        </div>
+        <div className="mt-2">
+          <FieldLabel>{t("pick_color")}</FieldLabel>
+          <ColorPicker value={color} onChange={setColor} noneLabel={t("quick_auto")} />
+        </div>
         {busy && <p className="mt-3 text-sm text-accent-soft">{t("quick_building")}</p>}
       </div>
     </form>

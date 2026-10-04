@@ -45,3 +45,32 @@ export function cropToDataUrl(src: string, area: CropArea, size = 256, quality =
     img.src = src;
   });
 }
+
+/** Dreht ein Bild um 90/180/270° und liefert eine JPEG-Data-URL (max. 800 px). Wirft, wenn das Bild nicht lesbar ist (z.B. CORS). */
+export function rotateImage(src: string, degrees: 90 | 180 | 270, maxSize = 800, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const swap = degrees !== 180;
+        const canvas = document.createElement("canvas");
+        canvas.width = swap ? h : w;
+        canvas.height = swap ? w : h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("canvas");
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((degrees * Math.PI) / 180);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error("Bild konnte nicht gelesen werden"));
+    img.src = src;
+  });
+}

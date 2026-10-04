@@ -3,13 +3,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { categoryFromLabel } from "@/lib/categories";
 import { colorFromLabel } from "@/lib/colors";
+import { applyVisibility, defaultVisibility, visibilityFromLegacy } from "@/lib/visibility";
 import { MOCK_WARDROBE, uid } from "@/lib/mock/wardrobe";
-import type { ItemCategory, ItemColor, ItemTag, WardrobeItem } from "@/types";
+import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from "@/types";
 
 export type NewItem = Pick<WardrobeItem, "name" | "image" | "tags" | "category"> & {
   color?: ItemColor;
   isPlaceholder?: boolean;
-  sharedWithCrew?: boolean;
+  visibility?: Partial<Visibility>;
 };
 
 interface WardrobeState {
@@ -20,7 +21,10 @@ interface WardrobeState {
   removeItem: (id: string) => void;
   updateTags: (id: string, tags: ItemTag[]) => void;
   setCategory: (id: string, category: ItemCategory) => void;
-  toggleShared: (id: string) => void;
+  /** Auge-Button: Privat <-> mit Crew teilen */
+  togglePrivate: (id: string) => void;
+  /** Sichtbarkeits-Kanäle ändern (Privat/Crew/Marketplace/Lab) */
+  setVisibility: (id: string, patch: Partial<Visibility>) => void;
   /** Mehrere Felder eines Items ändern (Bearbeiten-Dialog) */
   updateItem: (id: string, patch: Partial<Omit<WardrobeItem, "id">>) => void;
   /** Items für den Marktplatz listen (oder mit undefined wieder entfernen) */
@@ -39,8 +43,8 @@ const build = (n: NewItem): WardrobeItem => ({
   color: n.color,
   wearCount: 0,
   isPlaceholder: n.isPlaceholder ?? false,
-  // Privacy first: neue Items sind privat, bis der User sie freigibt
-  sharedWithCrew: n.sharedWithCrew ?? false,
+  // Privacy first: neue Items sind privat (aber im Lab nutzbar), bis der User sie freigibt
+  visibility: applyVisibility(defaultVisibility(), n.visibility ?? {}),
   createdAt: Date.now(),
 });
 
@@ -57,16 +61,36 @@ export const useWardrobeStore = create<WardrobeState>()(
       updateTags: (id, tags) => set((s) => ({ items: patch(s.items, id, { tags }) })),
       setCategory: (id, category) => set((s) => ({ items: patch(s.items, id, { category }) })),
       updateItem: (id, p) => set((s) => ({ items: patch(s.items, id, p) })),
-      toggleShared: (id) =>
+      togglePrivate: (id) =>
         set((s) => ({
-          items: s.items.map((i) => (i.id === id ? { ...i, sharedWithCrew: !i.sharedWithCrew } : i)),
+          items: s.items.map((i) => {
+            if (i.id !== id) return i;
+            // Privat -> mit Crew teilen; sonst alles abschalten (Marketplace-Angebot endet dann ebenfalls)
+            const visibility = i.visibility.isPrivate
+              ? applyVisibility(i.visibility, { sharedWithCrew: true })
+              : applyVisibility(i.visibility, { isPrivate: true });
+            return visibility.onMarketplace ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
+          }),
         })),
-      // Wer etwas anbietet, macht es damit sichtbar (sonst wäre das Angebot unsichtbar)
+      setVisibility: (id, p) =>
+        set((s) => ({
+          items: s.items.map((i) => {
+            if (i.id !== id) return i;
+            const visibility = applyVisibility(i.visibility, p);
+            return visibility.onMarketplace ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
+          }),
+        })),
+      // Anbieten schaltet den Marketplace-Kanal ein (Crew-Freigabe bleibt, wie sie ist); Zurückziehen schaltet ihn aus
       setListing: (ids, listing, price) =>
         set((s) => ({
           items: s.items.map((i) =>
             ids.includes(i.id)
-              ? { ...i, listing, price: listing && listing !== "swap" ? price : undefined, sharedWithCrew: listing ? true : i.sharedWithCrew }
+              ? {
+                  ...i,
+                  listing,
+                  price: listing && listing !== "swap" ? price : undefined,
+                  visibility: applyVisibility(i.visibility, { onMarketplace: !!listing }),
+                }
               : i,
           ),
         })),
@@ -80,7 +104,7 @@ export const useWardrobeStore = create<WardrobeState>()(
     }),
     {
       name: STORAGE.wardrobe,
-      version: 5,
+      version: 6,
       // v1 -> v2: bestehende Items bekommen category (aus dem Kategorie-Tag) und sharedWithCrew
       migrate: (persisted) => {
         const state = persisted as { items?: Partial<WardrobeItem>[] };
@@ -89,7 +113,6 @@ export const useWardrobeStore = create<WardrobeState>()(
           items: (state.items ?? []).map((i) => ({
             ...i,
             category: i.category ?? categoryFromLabel(i.tags?.find((t) => t.kind === "category")?.label),
-            sharedWithCrew: i.sharedWithCrew ?? true,
             // v2 -> v3: Farbe aus dem Farb-Tag ableiten
             color: i.color ?? colorFromLabel(i.tags?.find((t) => t.kind === "color")?.label),
           })),
@@ -101,7 +124,12 @@ export const useWardrobeStore = create<WardrobeState>()(
         const p = persisted as Partial<WardrobeState> | undefined;
         const items = (p?.items ?? current.items).map((i) =>
           ({ ...i, wearCount: i.wearCount ?? 0, color: i.color ?? colorFromLabel(i.tags?.find((t) => t.kind === "color")?.label) }),
-        );
+        ).map((i) => {
+          // Alte Items (nur sharedWithCrew/listing) bekommen das neue visibility-Objekt; das Altfeld verschwindet
+          const { sharedWithCrew: _legacy, ...rest } = i as typeof i & { sharedWithCrew?: boolean };
+          void _legacy;
+          return { ...rest, visibility: visibilityFromLegacy(i as Parameters<typeof visibilityFromLegacy>[0]) };
+        });
         return { ...current, ...p, items };
       },
     },

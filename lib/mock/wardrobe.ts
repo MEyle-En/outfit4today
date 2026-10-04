@@ -25,7 +25,7 @@ const mock = (
   isPlaceholder: false,
   category,
   color: colorFromLabel(color),
-  sharedWithCrew: true,
+  visibility: { isPrivate: false, sharedWithCrew: true, onMarketplace: false, availableInLab: true },
   wearCount: wear.count,
   lastWorn: wear.daysAgo != null ? daysAgoIso(wear.daysAgo) : undefined,
   createdAt,

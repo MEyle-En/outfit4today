@@ -86,7 +86,7 @@ export function myBundleListings(bundles: BundleListing[], items: WardrobeItem[]
 /** Eigene Items, die ich angeboten habe UND die sichtbar (nicht privat) sind. */
 export function myListings(items: WardrobeItem[]): MarketListing[] {
   return items
-    .filter((i) => i.listing && i.sharedWithCrew)
+    .filter((i) => i.listing && i.visibility.onMarketplace)
     .map((i) => ({
       id: `mine-${i.id}`,
       seller: "Du",

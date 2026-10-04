@@ -32,9 +32,32 @@ const SAMPLES: { name: string; category: ItemCategory; material: string }[] = [
 ];
 const COLORS: ItemColor[] = ["black", "white", "beige", "gray", "blue", "purple", "green"];
 
-/** Simuliert Bildanalyse (1,5 s). Kein echtes Computer Vision – liefert Zufallstags. */
-export async function analyzeImage(): Promise<AiResult> {
+/**
+ * Simuliert Bildanalyse (1,5 s). Kein echtes Computer Vision. Aussagekräftige Dateinamen
+ * ("schwarze-jeans.jpg") werden wie Quick-Add-Text ausgewertet, sonst gibt es einen Zufallsvorschlag.
+ * Die Farbe wird anschließend aus den Pixeln bestimmt (lib/image-color.ts).
+ */
+export async function analyzeImage(fileName?: string): Promise<AiResult> {
   await wait(1500);
+
+  const hint = (fileName ?? "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\d+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const meaningful = /[a-zäöüß]{3,}/i.test(hint) && !/^(img|dsc|image|photo|foto|screenshot|whatsapp|pxl|bild|unbenannt)\b/i.test(hint);
+  if (meaningful) {
+    const cat = CATEGORIES.find(([re]) => re.test(hint.toLowerCase()));
+    if (cat) {
+      const color = colorFromLabel(hint);
+      const tags: ItemTag[] = [tag("category", categoryLabel(cat[1]))];
+      if (color) tags.push(tag("color", colorLabel(color)));
+      if (cat[2]) tags.push(tag("material", cat[2]));
+      return { name: titleCase(hint), category: cat[1], color, tags };
+    }
+  }
+
   const s = pick(SAMPLES);
   const color = pick(COLORS);
   return {

@@ -31,7 +31,7 @@ export function NotificationBell({ className }: { className?: string }) {
       <button
         onClick={() => setOpen(true)}
         aria-label={`${t("notifications")}${unread ? ` (${unread})` : ""}`}
-        className={cn("glass relative grid h-10 w-10 place-items-center rounded-full", className)}
+        className={cn("icon-btn glass relative grid h-10 w-10 place-items-center rounded-full", className)}
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (

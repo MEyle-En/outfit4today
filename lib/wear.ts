@@ -12,7 +12,7 @@ export const daysSince = (iso?: string) => (iso ? Math.floor((Date.now() - new D
 
 /** Grund, warum ein Teil ein "vergessener Schatz" ist – oder null, wenn nicht. */
 export function forgottenReason(item: WardrobeItem): string | null {
-  if (item.category === "lifestyle" || item.listing) return null; // Vibe-Items und bereits angebotene Teile ausnehmen
+  if (item.category === "lifestyle" || item.visibility.onMarketplace) return null; // Vibe-Items und bereits angebotene Teile ausnehmen
   if (Date.now() - item.createdAt < GRACE_DAYS * DAY) return null;
   if (item.wearCount === 0) return translate("reason_never");
   if (item.lastWorn) {

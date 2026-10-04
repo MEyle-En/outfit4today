@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
 import { Camera, Check, Shirt, Type, Users } from "lucide-react";
 import { CrewView } from "@/components/crew/CrewView";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -23,7 +22,7 @@ export default function WardrobePage() {
   const categoryOptions = useCategoryOptions();
   const items = useWardrobeStore((s) => s.items);
   const removeItem = useWardrobeStore((s) => s.removeItem);
-  const toggleShared = useWardrobeStore((s) => s.toggleShared);
+  const togglePrivate = useWardrobeStore((s) => s.togglePrivate);
   const view = useCrewStore((s) => s.wardrobeView);
   const setView = useCrewStore((s) => s.setWardrobeView);
 
@@ -87,7 +86,10 @@ export default function WardrobePage() {
 
           {notice && (
             <p role="status" className="glass flex items-center gap-2 rounded-2xl px-4 py-3 text-sm text-accent-soft">
-              <Check className="h-4 w-4" /> {notice}
+              <span className="grid h-6 w-6 shrink-0 animate-check-pop place-items-center rounded-full bg-green-500 text-white">
+                <Check className="h-4 w-4" strokeWidth={3} />
+              </span>{" "}
+              {notice}
             </p>
           )}
 
@@ -113,16 +115,15 @@ export default function WardrobePage() {
           )}
 
           <section className="grid grid-cols-2 gap-3">
-            <AnimatePresence>
-              {visible.map((item) => (
+              {visible.map((item, i) => (
                 <ItemCard
                   key={item.id}
+                  index={i}
                   item={item}
                   onRemove={() => removeItem(item.id)}
-                  onToggleShared={() => toggleShared(item.id)}
+                  onTogglePrivate={() => togglePrivate(item.id)}
                 />
               ))}
-            </AnimatePresence>
           </section>
         </TabsContent>
 

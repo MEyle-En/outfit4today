@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Home, Shirt, ShoppingBag, Sparkles, User } from "lucide-react";
 import { playSound } from "@/lib/sound";
+import { haptic } from "@/lib/utils/haptic";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useProfileStore } from "@/lib/store/useProfileStore";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -34,26 +35,30 @@ export function BottomNav() {
           return (
             <li key={href} className="flex-1">
               <Link
-                onClick={() => !active && playSound("click")}
+                onClick={() => {
+                  if (active) return;
+                  playSound("click");
+                  haptic("light");
+                }}
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-medium transition-colors",
+                  "relative flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-medium transition-all duration-300",
                   active ? "text-white" : "text-zinc-500 hover:text-zinc-300",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="nav-pill"
-                    className="absolute inset-0 rounded-xl bg-accent/20 ring-1 ring-accent/40"
+                    className="absolute inset-0 rounded-xl bg-accent shadow-glow"
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
                 {href === "/profile" && avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatar} alt="" className={cn("relative h-5 w-5 rounded-full object-cover", active && "ring-2 ring-accent")} />
+                  <img src={avatar} alt="" className={cn("relative h-5 w-5 rounded-full object-cover", active && "animate-icon-pop ring-2 ring-white")} />
                 ) : (
-                  <Icon className={cn("relative h-5 w-5", active && "text-accent-soft")} />
+                  <Icon className={cn("relative h-5 w-5", active && "animate-icon-pop text-white")} />
                 )}
                 <span className="relative">{t(label)}</span>
               </Link>

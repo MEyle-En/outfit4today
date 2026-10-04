@@ -1,26 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeftRight, Eye, EyeOff, Repeat, Store, Tag, Users } from "lucide-react";
+import { ArrowLeftRight, EyeOff, Repeat, RotateCw, ShoppingBag, Sparkles, Tag, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { useTranslation } from "@/hooks/useTranslation";
+import { rotateImage } from "@/lib/image";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
 import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
 import { toast } from "@/lib/store/useToastStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
+import { applyVisibility } from "@/lib/visibility";
 import { cn } from "@/lib/utils";
-import type { ItemCategory, ItemColor, WardrobeItem } from "@/types";
+import type { ItemCategory, ItemColor, Visibility, WardrobeItem } from "@/types";
 
-type Visibility = "private" | "crew" | "marketplace";
 type Mode = "swap" | "sell" | "both";
 
-const initialVisibility = (i: WardrobeItem): Visibility => (i.listing ? "marketplace" : i.sharedWithCrew ? "crew" : "private");
-
-/** Item nachträglich bearbeiten: Name, Kategorie, Farbe und Sichtbarkeit (Privat / Crew / Marketplace). */
+/** Item nachträglich bearbeiten: Bild drehen, Name, Kategorie, Farbe und Sichtbarkeit (Privat / Crew / Marketplace / Lab). */
 export function EditItemDialog({
   item,
   open,
@@ -32,23 +31,28 @@ export function EditItemDialog({
 }) {
   const { t } = useTranslation();
   const updateItem = useWardrobeStore((s) => s.updateItem);
+  const setVisibility = useWardrobeStore((s) => s.setVisibility);
   const setListing = useWardrobeStore((s) => s.setListing);
 
+  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0); // nur Vorschau, wird beim Speichern ins Bild eingerechnet
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState(item.name);
   const [category, setCategory] = useState<ItemCategory>(item.category);
   const [color, setColor] = useState<ItemColor | undefined>(item.color);
-  const [visibility, setVisibility] = useState<Visibility>(initialVisibility(item));
+  const [vis, setVis] = useState<Visibility>(item.visibility);
   const [mode, setMode] = useState<Mode>(item.listing ?? "sell");
   const [price, setPrice] = useState(item.price != null ? String(item.price) : "");
 
-  const needsPrice = visibility === "marketplace" && mode !== "swap";
+  const needsPrice = vis.onMarketplace && mode !== "swap";
   const priceOk = !needsPrice || (price !== "" && Number(price) > 0);
   const canSave = name.trim().length > 0 && priceOk;
 
-  const VIS: { id: Visibility; label: string; icon: typeof Eye }[] = [
-    { id: "private", label: t("vis_private"), icon: EyeOff },
-    { id: "crew", label: t("vis_crew"), icon: Users },
-    { id: "marketplace", label: t("vis_market"), icon: Store },
+  // Kanäle: Privat schließt Crew/Marketplace aus, Crew und Marketplace sind kombinierbar, Lab ist unabhängig
+  const CHANNELS: { key: keyof Visibility; label: string; desc: string; icon: typeof Users }[] = [
+    { key: "isPrivate", label: t("vis_private"), desc: t("vis_privateDesc"), icon: EyeOff },
+    { key: "sharedWithCrew", label: t("vis_crew"), desc: t("vis_crewDesc"), icon: Users },
+    { key: "onMarketplace", label: t("vis_market"), desc: t("vis_marketDesc"), icon: ShoppingBag },
+    { key: "availableInLab", label: t("vis_lab"), desc: t("vis_labDesc"), icon: Sparkles },
   ];
   const MODES: { id: Mode; label: string; icon: typeof Tag }[] = [
     { id: "swap", label: t("mode_swap"), icon: ArrowLeftRight },
@@ -56,20 +60,31 @@ export function EditItemDialog({
     { id: "both", label: t("mode_both"), icon: Repeat },
   ];
 
-  const save = () => {
-    if (!canSave) return;
+  const toggle = (key: keyof Visibility) => {
+    // Privat lässt sich nur einschalten (ausschalten = Crew oder Marketplace wählen)
+    if (key === "isPrivate" && vis.isPrivate) return;
+    setVis((v) => applyVisibility(v, { [key]: !v[key] }));
+  };
+
+  const save = async () => {
+    if (!canSave || busy) return;
+    let image = item.image;
+    if (rotation !== 0) {
+      setBusy(true);
+      try {
+        image = await rotateImage(item.image, rotation);
+      } catch {
+        // z.B. fremdes Bild ohne CORS-Freigabe: Rotation nicht möglich, restliche Änderungen werden trotzdem gespeichert
+        toast(t("edit_rotateFailed"));
+      }
+      setBusy(false);
+    }
     // Kategorie- und Farb-Chip mitführen, damit Tags und Felder nicht auseinanderlaufen
     let tags = syncTag(item.tags, "category", categoryLabel(category));
     if (color) tags = syncTag(tags, "color", colorLabel(color));
-    updateItem(item.id, {
-      name: name.trim(),
-      category,
-      color,
-      tags,
-      sharedWithCrew: visibility !== "private",
-    });
-    if (visibility === "marketplace") setListing([item.id], mode, mode === "swap" ? undefined : Number(price));
-    else if (item.listing) setListing([item.id], undefined);
+    updateItem(item.id, { image, name: name.trim(), category, color, tags });
+    setVisibility(item.id, vis); // Marketplace aus => Angebot wird zurückgezogen
+    if (vis.onMarketplace) setListing([item.id], mode, mode === "swap" ? undefined : Number(price));
     toast(t("toast_saved"));
     onOpenChange(false);
   };
@@ -81,6 +96,41 @@ export function EditItemDialog({
         <DialogDescription>{t("edit_desc")}</DialogDescription>
 
         <div className="mt-5 space-y-5">
+          {/* Vorschau + Drehen */}
+          <div className="flex items-center gap-4">
+            <div className="grid h-32 w-28 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.image}
+                alt={item.name}
+                className="max-h-full max-w-full object-contain transition-transform duration-200"
+                style={{ transform: `rotate(${rotation}deg)`, ...(rotation % 180 !== 0 ? { maxHeight: "7rem", maxWidth: "7rem" } : {}) }}
+              />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
+                <RotateCw className="h-4 w-4 text-accent-soft" /> {t("edit_rotation")}
+              </p>
+              <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label={t("edit_rotation")}>
+                {([0, 90, 180, 270] as const).map((deg) => (
+                  <button
+                    key={deg}
+                    type="button"
+                    role="radio"
+                    aria-checked={rotation === deg}
+                    onClick={() => setRotation(deg)}
+                    className={cn(
+                      "rounded-xl py-2 text-xs font-semibold transition-colors",
+                      rotation === deg ? "bg-accent/30 text-white ring-1 ring-accent/50" : "bg-white/5 text-zinc-400",
+                    )}
+                  >
+                    {deg}°
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <label htmlFor="edit-name" className="text-sm font-semibold">
               {t("edit_name")}
@@ -112,25 +162,34 @@ export function EditItemDialog({
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold">{t("edit_visibility")}</p>
-            <div className="grid grid-cols-3 gap-2">
-              {VIS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setVisibility(id)}
-                  aria-pressed={visibility === id}
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-2xl border py-3 text-xs font-semibold transition-colors",
-                    visibility === id ? "border-accent/60 bg-accent/20" : "border-white/10 bg-white/5 text-zinc-400",
-                  )}
-                >
-                  <Icon className="h-4 w-4" /> {label}
-                </button>
-              ))}
+            <div>
+              <p className="text-sm font-semibold">{t("edit_visibility")}</p>
+              <p className="text-xs text-zinc-500">{t("edit_visibilityHint")}</p>
             </div>
 
-            {visibility === "marketplace" && (
+            {/* Multi-Select: Kanäle sind NICHT exklusiv. Privat an => alle anderen aus; Crew/Marketplace an => Privat aus; Lab unabhängig. */}
+            <div className="grid grid-cols-2 gap-2">
+              {CHANNELS.map(({ key, label, icon: Icon }) => {
+                const on = vis[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    onClick={() => toggle(key)}
+                    className={cn(
+                      "flex items-center justify-center gap-2 rounded-2xl border px-3 py-3.5 text-sm font-semibold transition-colors",
+                      on ? "border-accent bg-accent text-white shadow-glow" : "border-white/10 bg-white/5 text-zinc-400",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" /> {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {vis.onMarketplace && (
               <div className="space-y-3 rounded-2xl bg-white/5 p-3">
                 <div className="grid grid-cols-3 gap-1.5">
                   {MODES.map(({ id, label, icon: Icon }) => (
@@ -166,9 +225,14 @@ export function EditItemDialog({
             )}
           </div>
 
-          <Button size="lg" className="w-full" disabled={!canSave} onClick={save}>
-            {t("save")}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="lg" variant="glass" className="flex-1" onClick={() => onOpenChange(false)}>
+              {t("crop_cancel")}
+            </Button>
+            <Button size="lg" className="flex-1" disabled={!canSave || busy} onClick={() => void save()}>
+              {t("save")}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

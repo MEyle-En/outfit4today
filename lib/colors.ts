@@ -5,14 +5,14 @@ import type { ItemColor } from "@/types";
 export const COLORS: { id: ItemColor; /** CSS-Background */ swatch: string }[] = [
   { id: "black", swatch: "#000000" },
   { id: "white", swatch: "#FFFFFF" },
-  { id: "gray", swatch: "#71717A" },
+  { id: "gray", swatch: "#6B7280" },
   { id: "blue", swatch: "#3B82F6" },
   { id: "red", swatch: "#EF4444" },
   { id: "green", swatch: "#22C55E" },
   { id: "yellow", swatch: "#EAB308" },
-  { id: "brown", swatch: "#92400E" },
+  { id: "brown", swatch: "#78350F" },
   { id: "beige", swatch: "#D6C3A3" },
-  { id: "pink", swatch: "#F472B6" },
+  { id: "pink", swatch: "#EC4899" },
   { id: "purple", swatch: "#A855F7" },
   { id: "orange", swatch: "#F97316" },
   {

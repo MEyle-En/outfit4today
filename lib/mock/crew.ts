@@ -22,7 +22,7 @@ const fi = (
 ): FriendItem => ({
   ...buildMockItem(`${owner}-${n}`, name, `${owner}-${n}-${name}`, category, color, material, n),
   ownerId: owner,
-  sharedWithCrew: shared,
+  visibility: { isPrivate: !shared, sharedWithCrew: shared, onMarketplace: false, availableInLab: true },
 });
 
 /** Die Wardrobes der Freunde (Mock). `shared: false` zeigt, dass Privacy respektiert wird. */

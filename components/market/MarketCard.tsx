@@ -8,9 +8,20 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel } from "@/lib/categories";
 import { swatchOf } from "@/lib/colors";
 import type { MarketListing } from "@/lib/mock/market";
+import { stagger } from "@/lib/stagger";
 import { likeKey } from "@/lib/store/useSocialStore";
 
-export function MarketCard({ listing, match, compact }: { listing: MarketListing; match?: number; compact?: boolean }) {
+export function MarketCard({
+  listing,
+  match,
+  compact,
+  index = 0,
+}: {
+  listing: MarketListing;
+  match?: number;
+  compact?: boolean;
+  index?: number;
+}) {
   const { t } = useTranslation();
   const [chatOpen, setChatOpen] = useState(false);
   const swatch = swatchOf(listing.color);
@@ -19,7 +30,7 @@ export function MarketCard({ listing, match, compact }: { listing: MarketListing
   const bundle = listing.bundle;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-surface">
+    <article style={stagger(index)} className="animate-fade-in-up card-lift overflow-hidden rounded-2xl border border-white/10 bg-surface">
       <div className="relative aspect-[4/5] bg-gradient-to-br from-zinc-800 to-zinc-900">
         {bundle ? (
           // Bundle: Mosaik aus bis zu drei Teilen

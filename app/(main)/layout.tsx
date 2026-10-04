@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { Logo } from "@/components/brand/Logo";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useHydrated } from "@/hooks/useHydrated";
 import { LANGS } from "@/lib/i18n/translations";
@@ -9,6 +12,7 @@ import { useStyleStore } from "@/lib/store/useStyleStore";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated();
+  const pathname = usePathname();
   const hasOnboarded = useStyleStore((s) => s.hasOnboarded);
   const lang = useLangStore((s) => s.lang);
 
@@ -18,11 +22,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     document.documentElement.dir = LANGS.find((l) => l.id === lang)?.dir ?? "ltr";
   }, [lang]);
 
-  if (!hydrated || !hasOnboarded) return <div className="min-h-dvh" />;
+  if (!hydrated || !hasOnboarded) return <PageSkeleton />;
 
   return (
     <>
-      <div className="px-4 pb-28 pt-6">{children}</div>
+      <div className="px-4 pb-28 pt-6">
+        {pathname !== "/" && <Logo size={32} className="mb-5" />}
+        {children}
+      </div>
       <BottomNav />
     </>
   );

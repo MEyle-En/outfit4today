@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useVibeTheme } from "@/hooks/useVibeTheme";
 import { playSound } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 import { categoryLabel } from "@/lib/categories";
@@ -50,6 +51,7 @@ const top = (m: Record<string, number>, n = 3) => Object.entries(m).sort((a, b) 
 export default function ProfilePage() {
   const router = useRouter();
   const { t, lang, setLang } = useTranslation();
+  const theme = useVibeTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const user = useAuthStore((s) => s.user);
   const vibes = useStyleStore((s) => s.vibes);
@@ -169,7 +171,7 @@ export default function ProfilePage() {
           {vibeLabels.length ? (
             <span className="relative overflow-hidden rounded-full p-[1.5px]" style={{ background: styleGradient ?? "rgba(168,85,247,0.4)" }}>
               <span className="flex items-center gap-1.5 rounded-full bg-background px-3 py-1.5 text-sm font-medium">
-                <Sparkles className="h-3.5 w-3.5 text-accent-soft" /> {vibeLabels.join(" & ")}
+                <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accentColor }} /> {vibeLabels.join(" & ")}
               </span>
             </span>
           ) : (
@@ -262,7 +264,7 @@ export default function ProfilePage() {
               onAction={() => router.push("/lab")}
             />
           ) : (
-            myFits.map((p) => <FitCheckPost key={p.id} post={p} />)
+            myFits.map((p, i) => <FitCheckPost key={p.id} post={p} index={i} />)
           )}
         </TabsContent>
 

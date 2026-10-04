@@ -97,8 +97,8 @@ export const useCrewStore = create<CrewState>()(
           const target = layers[0];
           if (!target) return;
           const offered =
-            FRIEND_ITEMS.find((i) => i.sharedWithCrew && i.category === target.category && i.ownerId === "f-lea") ??
-            FRIEND_ITEMS.find((i) => i.sharedWithCrew && i.category === target.category);
+            FRIEND_ITEMS.find((i) => i.visibility.sharedWithCrew && i.category === target.category && i.ownerId === "f-lea") ??
+            FRIEND_ITEMS.find((i) => i.visibility.sharedWithCrew && i.category === target.category);
           if (!offered) return;
           get().addComment(post.id, {
             authorId: offered.ownerId,

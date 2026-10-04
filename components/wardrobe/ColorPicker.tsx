@@ -48,7 +48,7 @@ export function ColorPicker({
             onClick={() => onChange(c.id)}
             // 28px Kreis, 32px Touch-Fläche durch Ring-Abstand
             className={cn(
-              "relative grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/20 transition active:scale-90",
+              "relative grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90",
               active && "ring-2 ring-accent ring-offset-2 ring-offset-surface",
             )}
             style={{ background: c.swatch }}

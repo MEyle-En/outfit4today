@@ -11,6 +11,7 @@ import { LikeButton } from "@/components/ui/LikeButton";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePersonName } from "@/hooks/usePersonName";
 import { useProfileStore } from "@/lib/store/useProfileStore";
+import { stagger } from "@/lib/stagger";
 import { likeKey } from "@/lib/store/useSocialStore";
 import { useItemLookup } from "@/hooks/useItemLookup";
 import { getPerson } from "@/lib/mock/crew";
@@ -73,7 +74,7 @@ function SwapCard({ comment }: { comment: FitComment }) {
   );
 }
 
-export function FitCheckPost({ post }: { post: FitPost }) {
+export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: number }) {
   const { t } = useTranslation();
   const nameOf = usePersonName();
   const lookupItem = useItemLookup();
@@ -83,7 +84,7 @@ export function FitCheckPost({ post }: { post: FitPost }) {
   const isMine = post.authorId === "me";
 
   return (
-    <article className="space-y-3 rounded-2xl border border-white/10 bg-surface p-3">
+    <article style={stagger(index)} className="animate-fade-in-up card-lift space-y-3 rounded-2xl border border-white/10 bg-surface p-3">
       <header className="flex items-center gap-3">
         <Avatar id={post.authorId} />
         <div className="min-w-0 flex-1">

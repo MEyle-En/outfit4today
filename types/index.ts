@@ -27,6 +27,17 @@ export interface ItemTag {
   label: string;
 }
 
+export interface Visibility {
+  /** Nur ich (schließt Crew und Marketplace aus) */
+  isPrivate: boolean;
+  /** Meine Crew kann es sehen */
+  sharedWithCrew: boolean;
+  /** Öffentlich zum Verkauf/Tausch (kombinierbar mit Crew) */
+  onMarketplace: boolean;
+  /** Im Fit Lab nutzbar (Standard: true) */
+  availableInLab: boolean;
+}
+
 export interface WardrobeItem {
   id: string;
   name: string;
@@ -36,8 +47,8 @@ export interface WardrobeItem {
   tags: ItemTag[];
   category: ItemCategory;
   color?: ItemColor;
-  /** Privacy: für die Crew sichtbar (Standard: an) */
-  sharedWithCrew: boolean;
+  /** Wer sieht / nutzt das Teil? Kanäle sind kombinierbar (siehe lib/visibility.ts) */
+  visibility: Visibility;
   /** Marktplatz: zum Tausch/Verkauf angeboten (fehlt = nicht gelistet) */
   listing?: "swap" | "sell" | "both";
   /** Verkaufspreis in € (bei listing = "sell" oder "both") */
