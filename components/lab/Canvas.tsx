@@ -73,7 +73,19 @@ export function Canvas() {
   const deselectAll = () => {
     setSelectedId(null);
     setSelectedTextId(null);
+    setEditingId(null);
   };
+
+  // Der Export bittet vor dem Foto darum, die Auswahl (Rahmen, Griffe, Toolbar) wegzunehmen
+  useEffect(() => {
+    const handler = () => {
+      setSelectedId(null);
+      setSelectedTextId(null);
+      setEditingId(null);
+    };
+    window.addEventListener("lab:deselect", handler);
+    return () => window.removeEventListener("lab:deselect", handler);
+  }, []);
 
   return (
     <div
@@ -81,6 +93,7 @@ export function Canvas() {
         setNodeRef(el);
         canvasRef.current = el;
       }}
+      id={CANVAS_ID}
       onClick={deselectAll}
       // relative + overflow-hidden: react-rnd nutzt das Canvas als Positions- und Bounds-Parent
       className={cn(
@@ -92,10 +105,10 @@ export function Canvas() {
         backgroundSize: `${GRID}px ${GRID}px`,
       }}
     >
-      {isOver && <div className="pointer-events-none absolute inset-0 bg-accent/5" />}
+      {isOver && <div data-export-hide className="pointer-events-none absolute inset-0 bg-accent/5" />}
 
       {canvasItems.length === 0 && texts.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 grid place-items-center p-8 text-center">
+        <div data-export-hide className="pointer-events-none absolute inset-0 grid place-items-center p-8 text-center">
           <div className="space-y-2 text-zinc-500">
             <MousePointerClick className="mx-auto h-8 w-8" />
             <p className="font-display text-xl font-semibold text-zinc-300">{t("canvas_title")}</p>

@@ -122,6 +122,9 @@ const fr: Dict = {
   today_swap: "Échanger",
   bg_remove: "Supprimer l'arrière-plan",
   bg_removing: "Suppression de l'arrière-plan...",
+  like_tooltip: "J'aime",
+  inspired_tooltip: "Inspiré",
+  comments_tooltip: "Commentaires",
   // @@FR
 };
 const es: Dict = {
@@ -242,6 +245,9 @@ const es: Dict = {
   today_swap: "Intercambiar",
   bg_remove: "Quitar fondo",
   bg_removing: "Quitando el fondo...",
+  like_tooltip: "Me gusta",
+  inspired_tooltip: "Inspirado",
+  comments_tooltip: "Comentarios",
   // @@ES
 };
 const it: Dict = {
@@ -362,6 +368,9 @@ const it: Dict = {
   today_swap: "Scambia",
   bg_remove: "Rimuovi sfondo",
   bg_removing: "Rimozione dello sfondo...",
+  like_tooltip: "Mi piace",
+  inspired_tooltip: "Ispirato",
+  comments_tooltip: "Commenti",
   // @@IT
 };
 const tr: Dict = {
@@ -483,6 +492,9 @@ const tr: Dict = {
   today_swap: "Takas et",
   bg_remove: "Arka planı kaldır",
   bg_removing: "Arka plan kaldırılıyor...",
+  like_tooltip: "Beğen",
+  inspired_tooltip: "İlham aldım",
+  comments_tooltip: "Yorumlar",
   // @@TR
 };
 const ar: Dict = {
@@ -603,6 +615,9 @@ const ar: Dict = {
   today_swap: "بدّل",
   bg_remove: "إزالة الخلفية",
   bg_removing: "جارٍ إزالة الخلفية...",
+  like_tooltip: "أعجبني",
+  inspired_tooltip: "ملهم",
+  comments_tooltip: "التعليقات",
   // @@AR
 };
 

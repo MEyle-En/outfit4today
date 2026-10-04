@@ -31,7 +31,11 @@ export function FitPreview({ layers }: { layers: FitLayer[] }) {
         return (
           <div
             key={`${l.itemId}-${i}`}
-            className="absolute overflow-hidden rounded-lg border border-white/15 bg-gradient-to-br from-zinc-700 to-zinc-900 shadow-lg"
+            className={
+              item?.hasTransparentBackground
+                ? "absolute"
+                : "absolute overflow-hidden rounded-lg border border-white/15 bg-gradient-to-br from-zinc-700 to-zinc-900 shadow-lg"
+            }
             style={{
               left: `${((l.x - minX) / w) * 100}%`,
               top: `${((l.y - minY) / h) * 100}%`,
@@ -43,7 +47,12 @@ export function FitPreview({ layers }: { layers: FitLayer[] }) {
           >
             {item ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.image} alt={l.name} className="h-full w-full object-cover" />
+              <img
+                src={item.image}
+                alt={l.name}
+                className={item.hasTransparentBackground ? "h-full w-full object-contain" : "h-full w-full object-cover"}
+                style={item.hasTransparentBackground ? { filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.35))" } : undefined}
+              />
             ) : (
               <span className="grid h-full place-items-center p-1 text-center text-[9px] text-zinc-400">{l.name}</span>
             )}

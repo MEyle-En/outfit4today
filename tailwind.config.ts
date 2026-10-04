@@ -34,7 +34,7 @@ const config: Config = {
         // Einmaliger Hüpfer beim Wechsel des Tabs
         "icon-pop": {
           "0%": { transform: "translateY(0) scale(1)" },
-          "30%": { transform: "translateY(-6px) scale(1.15)" },
+          "30%": { transform: "translateY(-3px) scale(1.1)" },
           "60%": { transform: "translateY(0) scale(0.95)" },
           "100%": { transform: "translateY(0) scale(1)" },
         },

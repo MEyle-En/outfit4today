@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeftRight, Globe, Send } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeftRight, Bookmark, Globe, MessageCircle, Send } from "lucide-react";
 import { FitPreview } from "@/components/crew/FitPreview";
 import { SwapDialog } from "@/components/crew/SwapDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LikeButton } from "@/components/ui/LikeButton";
+import { Tip } from "@/components/ui/Tip";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePersonName } from "@/hooks/usePersonName";
 import { useProfileStore } from "@/lib/store/useProfileStore";
@@ -17,13 +18,7 @@ import { useItemLookup } from "@/hooks/useItemLookup";
 import { getPerson } from "@/lib/mock/crew";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { cn, timeAgo } from "@/lib/utils";
-import type { FitComment, FitPost, ReactionType } from "@/types";
-
-const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
-  { type: "fire", emoji: "🔥", label: "Fire" },
-  { type: "idea", emoji: "💡", label: "Idea" },
-  { type: "want", emoji: "🛍️", label: "Want" },
-];
+import type { FitComment, FitPost } from "@/types";
 
 function Avatar({ id, size = "h-9 w-9" }: { id: string; size?: string }) {
   const avatar = useProfileStore((s) => s.avatar);
@@ -86,7 +81,9 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
   const { toggleReaction, addComment, togglePublic } = useCrewStore.getState();
   const [swapOpen, setSwapOpen] = useState(false);
   const [text, setText] = useState("");
+  const commentRef = useRef<HTMLInputElement>(null);
   const isMine = post.authorId === "me";
+  const inspired = post.reactions.idea.includes("me");
 
   return (
     <article style={stagger(index)} className="animate-fade-in-up card-lift space-y-3 rounded-2xl border border-white/10 bg-surface p-3">
@@ -121,40 +118,50 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
 
       {post.caption && <p className="text-sm text-zinc-200">{post.caption}</p>}
 
+      {/* Aktionsleiste: Herz = Gefällt mir, Lesezeichen = Inspiriert, Sprechblase = Kommentare – jeweils mit Zähler */}
       <div className="flex flex-wrap items-center gap-2">
-        {REACTIONS.map(({ type, emoji, label }) => {
-          const active = post.reactions[type].includes("me");
-          return (
-            <button
-              key={type}
-              onClick={() => toggleReaction(post.id, type)}
-              aria-pressed={active}
-              aria-label={label}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition active:scale-95",
-                active ? "border-accent/60 bg-accent/20" : "border-white/10 bg-white/5",
-              )}
-            >
-              <span>{emoji}</span>
-              <span className="text-xs tabular-nums text-zinc-300">{post.reactions[type].length}</span>
-            </button>
-          );
-        })}
-        {post.isPublic && (
-          <LikeButton
-            likeKey={likeKey.post(post.id)}
-            mine={isMine}
-            // Vorlieben merken: welche Teile/Kategorien/Farben wurden geliket
-            traits={{
-              itemIds: post.layers.map((l) => l.itemId),
-              categories: post.layers.map((l) => l.category),
-              colors: post.layers.flatMap((l) => {
-                const c = lookupItem(l.itemId)?.color;
-                return c ? [c] : [];
-              }),
-            }}
-          />
-        )}
+        <LikeButton
+          likeKey={likeKey.post(post.id)}
+          mine={isMine}
+          // Vorlieben merken: welche Teile/Kategorien/Farben wurden geliket
+          traits={{
+            itemIds: post.layers.map((l) => l.itemId),
+            categories: post.layers.map((l) => l.category),
+            colors: post.layers.flatMap((l) => {
+              const c = lookupItem(l.itemId)?.color;
+              return c ? [c] : [];
+            }),
+          }}
+        />
+
+        <Tip label={t("inspired_tooltip")}>
+          <button
+            type="button"
+            onClick={() => toggleReaction(post.id, "idea")}
+            aria-pressed={inspired}
+            aria-label={t("inspired_tooltip")}
+            className={cn(
+              "icon-btn flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
+              inspired ? "border-accent/60 bg-accent/20" : "border-white/10 bg-white/5",
+            )}
+          >
+            <Bookmark className={cn("h-4 w-4 transition-colors", inspired && "fill-accent text-accent")} />
+            <span className="text-xs tabular-nums">{post.reactions.idea.length}</span>
+          </button>
+        </Tip>
+
+        <Tip label={t("comments_tooltip")}>
+          <button
+            type="button"
+            onClick={() => commentRef.current?.focus()}
+            aria-label={t("comments_tooltip")}
+            className="icon-btn flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm"
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-xs tabular-nums">{post.comments.length}</span>
+          </button>
+        </Tip>
+
         {!isMine && (
           <Button variant="glass" size="sm" className="ml-auto" onClick={() => setSwapOpen(true)}>
             <ArrowLeftRight className="h-4 w-4" /> {t("swap")}
@@ -188,6 +195,7 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
         }}
       >
         <Input
+          ref={commentRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={t("post_commentPh")}

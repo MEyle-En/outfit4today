@@ -53,6 +53,8 @@ export interface WardrobeItem {
   listing?: "swap" | "sell" | "both";
   /** Verkaufspreis in € (bei listing = "sell" oder "both") */
   price?: number;
+  /** Hintergrund wurde entfernt (PNG/WebP mit Transparenz) -> im Lab ohne quadratischen Rahmen */
+  hasTransparentBackground?: boolean;
   /** Wie oft getragen (Standard 0) */
   wearCount: number;
   /** ISO-Datum des letzten Tragens */

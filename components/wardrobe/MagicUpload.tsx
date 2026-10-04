@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Eraser, Loader2, RotateCcw, Sparkles, UploadCloud, X } from "lucide-react";
+import { Check, Eraser, Loader2, RotateCcw, UploadCloud, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TagChips } from "@/components/wardrobe/TagChips";
@@ -30,15 +30,21 @@ interface Draft {
   id: string;
   image: string;
   name: string;
-  category: ItemCategory;
+  /** Leer, bis der Nutzer eine Kategorie wählt (keine automatische Zuweisung) */
+  category: ItemCategory | "";
   color?: ItemColor;
   tags: ItemTag[];
+  /** Auto-Fill läuft */
+  filling?: boolean;
+  /** "analyzing" = Bild wird geladen */
   status: "analyzing" | "ready";
   /** Originaldatei (für die Hintergrund-Entfernung) */
   file?: File;
   /** Bild vor dem Freistellen, damit es wiederhergestellt werden kann */
   original?: string;
   removing?: boolean;
+  /** Hintergrund wurde entfernt (transparent) */
+  transparent?: boolean;
 }
 
 export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) {
@@ -58,8 +64,9 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     try {
       const blob = await removeBackgroundFromImage(d.file);
       const image = await blobToCompactDataUrl(blob, 800);
-      patch(d.id, { image, original: d.original ?? d.image, removing: false });
+      patch(d.id, { image, original: d.original ?? d.image, removing: false, transparent: true });
       playSound("success");
+      toast(tr("bg_done"));
     } catch {
       // Original bleibt erhalten
       patch(d.id, { removing: false });
@@ -74,21 +81,15 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     // Bulk: alle Drafts sofort als Skeleton anzeigen, Analyse läuft parallel
     const created: { draft: Draft; file: File }[] = files.map((file) => ({
       file,
-      draft: { id: uid(), image: "", name: "", category: "top", tags: [], status: "analyzing", file },
+      draft: { id: uid(), image: "", name: "", category: "", tags: [], status: "analyzing", file },
     }));
     setDrafts((d) => [...created.map((c) => c.draft), ...d]);
 
+    // Nur das Bild laden. Name, Kategorie und Farbe wählt der Nutzer selbst (keine automatische Zuweisung).
     await Promise.all(
       created.map(async ({ draft, file }) => {
         try {
-          const [image, ai] = await Promise.all([fileToDataUrl(file), analyzeImage(file.name)]);
-          // Farbe wirklich aus dem Bild lesen; nur wenn das scheitert, gilt der Vorschlag der Mock-KI
-          const detected = await detectDominantColor(image);
-          // Reihenfolge: Farbname im Dateinamen -> Farbe aus den Pixeln -> Vorschlag der Mock-KI
-          const color = detectColorFromText(file.name) ?? detected ?? ai.color;
-          const tags = color ? syncTag(ai.tags, "color", colorLabel(color)) : ai.tags;
-          const name = color ? withColorName(ai.name, color) : ai.name;
-          patch(draft.id, { image, name, category: ai.category, color, tags, status: "ready" });
+          patch(draft.id, { image: await fileToDataUrl(file), status: "ready" });
         } catch {
           setDrafts((d) => d.filter((x) => x.id !== draft.id));
         }
@@ -96,15 +97,43 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     );
   };
 
+  /** Optional ("Auto-Fill (Beta)"): Mock-KI schlägt Name, Kategorie und Farbe vor – alles bleibt änderbar. */
+  const autoFill = async (d: Draft) => {
+    if (!d.file) return;
+    patch(d.id, { filling: true });
+    try {
+      const ai = await analyzeImage(d.file.name);
+      const detected = await detectDominantColor(d.image);
+      const color = detectColorFromText(d.file.name) ?? detected ?? ai.color;
+      const tags = color ? syncTag(ai.tags, "color", colorLabel(color)) : ai.tags;
+      patch(d.id, { name: color ? withColorName(ai.name, color) : ai.name, category: ai.category, color, tags, filling: false });
+    } catch {
+      patch(d.id, { filling: false });
+    }
+  };
+
   const ready = drafts.filter((d) => d.status === "ready");
   const analyzing = drafts.length - ready.length;
 
+  // Pflichtfelder: Name (mind. 2 Zeichen), Kategorie, Farbe
+  const isValid = (d: Draft) => d.name.trim().length >= 2 && !!d.category && !!d.color;
+  const allValid = ready.length > 0 && ready.every(isValid);
+
   const save = () => {
-    addItems(ready.map(({ name, image, tags, category, color }) => ({ name, image, tags, category, color })));
+    if (!allValid || analyzing > 0) return;
+    addItems(
+      ready.map((d) => {
+        const cat = d.category as ItemCategory;
+        const col = d.color as ItemColor;
+        // Chips aus den gewählten Feldern, damit Tags und Felder übereinstimmen
+        const tags = syncTag(syncTag(d.tags, "category", categoryLabel(cat)), "color", colorLabel(col));
+        return { name: d.name.trim(), image: d.image, tags, category: cat, color: col, hasTransparentBackground: d.transparent };
+      }),
+    );
     playSound("success");
     haptic("success");
     onSaved?.(ready.length);
-    setDrafts((d) => d.filter((x) => x.status !== "ready"));
+    setDrafts((all) => all.filter((x) => x.status !== "ready"));
   };
 
   return (
@@ -160,9 +189,9 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
               <div className="flex gap-3 p-3">
                 <Skeleton className="h-28 w-24 shrink-0" />
                 <div className="flex-1 space-y-3 pt-1">
-                  <p className="flex items-center gap-2 text-sm text-accent-soft">
-                    <Sparkles className="h-4 w-4 animate-pulse" />
-                    {tr("magic_analyzing")}
+                  <p className="flex items-center gap-2 text-sm text-zinc-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {tr("magic_loading")}
                   </p>
                   <div className="flex gap-2">
                     <Skeleton className="h-8 w-20 rounded-full" />
@@ -186,6 +215,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                   <div className="flex items-start justify-between gap-2">
                     <input
                       value={d.name}
+                      placeholder={tr("magic_namePh")}
                       onChange={(e) => patch(d.id, { name: e.target.value })}
                       aria-label={tr("edit_name")}
                       className="w-full bg-transparent font-display text-lg font-semibold outline-none focus:text-accent-soft"
@@ -203,7 +233,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                     (d.original ? (
                       <button
                         type="button"
-                        onClick={() => patch(d.id, { image: d.original, original: undefined })}
+                        onClick={() => patch(d.id, { image: d.original, original: undefined, transparent: false })}
                         className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white"
                       >
                         <RotateCcw className="h-3.5 w-3.5" /> {tr("bg_restore")}
@@ -217,12 +247,21 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                         <Eraser className="h-3.5 w-3.5" /> {tr("bg_remove")}
                       </button>
                     ))}
+                  <button
+                    type="button"
+                    onClick={() => void autoFill(d)}
+                    disabled={d.filling}
+                    className="flex items-center gap-1.5 text-xs font-medium text-accent-soft hover:text-white"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" /> {tr("autofill_beta")}
+                  </button>
                   <FieldLabel>{tr("pick_category")}</FieldLabel>
                   <CategoryPicker
                     value={d.category}
                     options={categoryOptions}
                     wrap
                     onChange={(category) =>
+                      category &&
                       patch(d.id, {
                         category,
                         // Kategorie-Chip mitziehen, damit Tag und Auswahl nicht auseinanderlaufen
@@ -243,7 +282,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
       </AnimatePresence>
 
       {drafts.length > 0 && (
-        <Button size="lg" silent className="w-full" onClick={save} disabled={ready.length === 0 || analyzing > 0}>
+        <Button size="lg" silent className="w-full" onClick={save} disabled={!allValid || analyzing > 0}>
           {analyzing > 0 ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" /> {tr("magic_analyzingN", { n: analyzing })}
@@ -254,6 +293,11 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
             </>
           )}
         </Button>
+      )}
+      {drafts.length > 0 && analyzing === 0 && !allValid && (
+        <p role="alert" className="text-center text-sm text-amber-300">
+          {tr("magic_fillAll")}
+        </p>
       )}
     </div>
   );

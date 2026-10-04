@@ -11,6 +11,7 @@ import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from 
 export type NewItem = Pick<WardrobeItem, "name" | "image" | "tags" | "category"> & {
   color?: ItemColor;
   isPlaceholder?: boolean;
+  hasTransparentBackground?: boolean;
   visibility?: Partial<Visibility>;
 };
 
@@ -53,6 +54,7 @@ const build = (n: NewItem): WardrobeItem => ({
   category: n.category,
   color: n.color,
   wearCount: 0,
+  hasTransparentBackground: n.hasTransparentBackground,
   isPlaceholder: n.isPlaceholder ?? false,
   // Privacy first: neue Items sind privat (aber im Lab nutzbar), bis der User sie freigibt
   visibility: applyVisibility(defaultVisibility(), n.visibility ?? {}),

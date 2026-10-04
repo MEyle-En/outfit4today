@@ -141,7 +141,8 @@ export const de = {
   edit_name: "Name",
   edit_title: "Item bearbeiten",
   edit_visibility: "Sichtbarkeit",
-  export_done: "Fit exportiert! (Mock)",
+  export_done: "Fit als PNG gespeichert!",
+  export_failed: "Export fehlgeschlagen",
   export_fit: "Export Fit",
   export_rendering: "Rendering...",
   item_delete: "{name} löschen",
@@ -371,6 +372,14 @@ export const de = {
   bg_removingHint: "(~3-5 Sekunden, beim ersten Mal etwas länger)",
   bg_failed: "Hintergrund konnte nicht entfernt werden",
   bg_failedHint: "Das Originalfoto bleibt erhalten.",
+  like_tooltip: "Gefällt mir",
+  inspired_tooltip: "Inspiriert",
+  comments_tooltip: "Kommentare",
+  magic_namePh: "Gib deinem Teil einen Namen...",
+  magic_fillAll: "Bitte fülle alle Felder aus",
+  autofill_beta: "Auto-Fill (Beta)",
+  bg_done: "Hintergrund entfernt!",
+  magic_loading: "Bild wird geladen…",
   // @@DE_END
 } as const;
 
@@ -508,7 +517,8 @@ const en: Record<TranslationKey, string> = {
   edit_name: "Name",
   edit_title: "Edit item",
   edit_visibility: "Visibility",
-  export_done: "Fit exported! (Mock)",
+  export_done: "Fit saved as PNG!",
+  export_failed: "Export failed",
   export_fit: "Export fit",
   export_rendering: "Rendering...",
   item_delete: "Delete {name}",
@@ -738,6 +748,14 @@ const en: Record<TranslationKey, string> = {
   bg_removingHint: "(~3-5 seconds, a bit longer the first time)",
   bg_failed: "Couldn't remove the background",
   bg_failedHint: "Your original photo is kept.",
+  like_tooltip: "Like",
+  inspired_tooltip: "Inspired",
+  comments_tooltip: "Comments",
+  magic_namePh: "Give your piece a name...",
+  magic_fillAll: "Please fill in all fields",
+  autofill_beta: "Auto-Fill (Beta)",
+  bg_done: "Background removed!",
+  magic_loading: "Loading image…",
   // @@EN_END
 };
 

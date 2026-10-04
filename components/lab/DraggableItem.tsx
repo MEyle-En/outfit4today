@@ -60,6 +60,8 @@ export function DraggableItem({ canvasItem, item, zIndex, selected, onSelect }: 
   const { updateItemPosition, updateItemBox, rotateItem, setRotation, removeItemFromCanvas, bringToFront } =
     useLabStore.getState();
   const { id, x, y, rotation, size } = canvasItem;
+  // Freigestellte Teile zeigen ihre echte Form: kein Kasten, nur das Bild mit weichem Schatten
+  const cutout = !!item.hasTransparentBackground;
   const contentRef = useRef<HTMLDivElement>(null);
   const rotating = useRef<{ moved: boolean; startX: number; startY: number } | null>(null);
 
@@ -132,13 +134,28 @@ export function DraggableItem({ canvasItem, item, zIndex, selected, onSelect }: 
       >
         <div
           className={cn(
-            "absolute inset-0 overflow-hidden rounded-xl border bg-surface shadow-xl",
-            selected ? "border-accent ring-2 ring-accent/60" : "border-white/15",
+            "absolute inset-0",
+            cutout
+              ? cn("rounded-lg border border-dashed", selected ? "border-accent/80" : "border-transparent")
+              : cn("overflow-hidden rounded-xl border bg-surface shadow-xl", selected ? "border-accent ring-2 ring-accent/60" : "border-white/15"),
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={item.image} alt={item.name} draggable={false} className="pointer-events-none h-full w-full object-cover" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 space-y-1 bg-gradient-to-t from-black/85 to-transparent p-1.5 pt-7">
+          <img
+            src={item.image}
+            alt={item.name}
+            draggable={false}
+            className={cn("pointer-events-none h-full w-full", cutout ? "object-contain" : "object-cover")}
+            style={cutout ? { filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))" } : undefined}
+          />
+          <div
+            data-export-hide
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 space-y-1 p-1.5",
+              !cutout && "bg-gradient-to-t from-black/85 to-transparent pt-7",
+              cutout && !selected && "hidden",
+            )}
+          >
             <p className="truncate text-[11px] font-medium">{item.name}</p>
             <div
               className={cn(

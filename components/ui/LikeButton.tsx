@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Heart } from "lucide-react";
+import { Tip } from "@/components/ui/Tip";
 import { haptic } from "@/lib/utils/haptic";
 import { playSound } from "@/lib/sound";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -29,6 +30,7 @@ export function LikeButton({
   const [pop, setPop] = useState(false);
 
   return (
+    <Tip label={t("like_tooltip")}>
     <button
       type="button"
       onClick={(e) => {
@@ -55,5 +57,6 @@ export function LikeButton({
       <Heart className={cn("relative h-4 w-4 transition-colors", liked && "fill-accent text-accent", pop && "animate-heart-pop")} />
       <span className="text-xs tabular-nums">{count}</span>
     </button>
+    </Tip>
   );
 }
