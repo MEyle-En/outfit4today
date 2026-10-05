@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useAuthStore } from "@/lib/store/useAuthStore";
+import Link from "next/link";
+import { MIN_PASSWORD, useAuthStore } from "@/lib/store/useAuthStore";
 import { toast } from "@/lib/store/useToastStore";
 import { cn } from "@/lib/utils";
 
@@ -18,23 +19,43 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginPage() {
   const { t } = useTranslation();
   const login = useAuthStore((s) => s.login);
+  const register = useAuthStore((s) => s.register);
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const emailError = submitted && !EMAIL_RE.test(email.trim()) ? t("auth_errEmail") : null;
   const usernameError = submitted && mode === "register" && username.trim().length < 2 ? t("auth_errUsername") : null;
 
+  const passwordError =
+    submitted && password.length === 0
+      ? t("auth_errPasswordRequired")
+      : submitted && mode === "register" && password.length < MIN_PASSWORD
+        ? t("auth_errPasswordShort")
+        : null;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
+    setAuthError(null);
     if (!EMAIL_RE.test(email.trim())) return;
     if (mode === "register" && username.trim().length < 2) return;
-    // Passwort ist im MVP optional und wird bewusst nicht gespeichert
-    login(email, mode === "register" ? username : undefined);
+    if (password.length === 0 || (mode === "register" && password.length < MIN_PASSWORD)) return;
+    const result = mode === "register" ? register(email, username, password) : login(email, password);
+    if (!result.ok) {
+      setAuthError(
+        result.error === "exists"
+          ? t("auth_errExists")
+          : result.error === "weakPassword"
+            ? t("auth_errPasswordShort")
+            : t("auth_errCredentials"), // unbekannte E-Mail und falsches Passwort bewusst nicht unterscheiden
+      );
+      return;
+    }
     toast(t("auth_welcome", { name: useAuthStore.getState().user?.username ?? "" }));
   };
 
@@ -81,8 +102,14 @@ export default function LoginPage() {
           aria-label={t("auth_password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={!!passwordError}
+          className={cn(passwordError && "border-red-400/70 ring-1 ring-red-400/50")}
         />
-        <p className="text-[11px] text-zinc-500">{t("auth_passwordHint")}</p>
+        {passwordError ? (
+          <p role="alert" className="text-xs text-red-400">{passwordError}</p>
+        ) : (
+          mode === "register" && <p className="text-[11px] text-zinc-500">{t("auth_passwordHint")}</p>
+        )}
       </div>
     </div>
   );
@@ -110,6 +137,7 @@ export default function LoginPage() {
             onValueChange={(v) => {
               setMode(v as Mode);
               setSubmitted(false);
+              setAuthError(null);
             }}
           >
             <TabsList>
@@ -123,6 +151,12 @@ export default function LoginPage() {
             <TabsContent value="login">{fields}</TabsContent>
             <TabsContent value="register">{fields}</TabsContent>
           </Tabs>
+
+          {authError && (
+            <p role="alert" className="rounded-xl bg-red-500/10 px-3 py-2 text-center text-sm text-red-400">
+              {authError}
+            </p>
+          )}
 
           <Button type="submit" size="lg" className="w-full">
             {t("auth_continue")}
@@ -155,6 +189,11 @@ export default function LoginPage() {
             </button>
           ))}
         </div>
+
+        <p className="flex justify-center gap-4 text-xs text-zinc-500">
+          <Link href="/privacy" className="hover:text-white">{t("legal_privacy")}</Link>
+          <Link href="/imprint" className="hover:text-white">{t("legal_imprint")}</Link>
+        </p>
       </div>
     </main>
   );

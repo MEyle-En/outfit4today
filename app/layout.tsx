@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&display=swap"
         />
-        <style>{`:root{--font-clash:"Clash Display"}`}</style>
+        <style dangerouslySetInnerHTML={{ __html: `:root{--font-clash:"Clash Display"}` }} />
       </head>
       <body className="min-h-dvh bg-background font-sans antialiased">
         <div className="mx-auto min-h-dvh max-w-md">

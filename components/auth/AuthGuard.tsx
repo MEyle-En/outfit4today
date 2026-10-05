@@ -30,7 +30,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const onboarded = authOnboarded && styleOnboarded;
 
   let target: string | null = null;
-  if (hydrated) {
+  const isLegal = pathname === "/privacy" || pathname === "/imprint";
+  if (hydrated && !isLegal) {
     if (!isAuthenticated) target = pathname === "/login" ? null : "/login";
     else if (pathname === "/login") target = onboarded ? "/" : "/vibe-check";
     else if (!onboarded && pathname !== "/vibe-check") target = "/vibe-check";

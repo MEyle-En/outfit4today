@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Heart, LogOut, RotateCcw, Shirt, Sparkles, Trash2, User, Volume2, VolumeX } from "lucide-react";
+import Link from "next/link";
+import { Camera, FileText, Heart, LogOut, Shield, RotateCcw, Shirt, Sparkles, Trash2, User, Volume2, VolumeX } from "lucide-react";
 import { ImageCropper } from "@/components/profile/ImageCropper";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -338,6 +339,15 @@ export default function ProfilePage() {
         >
           <Trash2 className="h-4 w-4" /> {confirmDelete ? t("profile_deleteConfirm") : t("profile_deleteAll")}
         </Button>
+
+        <div className="flex flex-col gap-1 pt-2 text-sm text-zinc-400">
+          <Link href="/privacy" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
+            <Shield className="h-4 w-4" /> {t("legal_privacyFull")}
+          </Link>
+          <Link href="/imprint" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
+            <FileText className="h-4 w-4" /> {t("legal_imprint")}
+          </Link>
+        </div>
       </section>
     </div>
   );
