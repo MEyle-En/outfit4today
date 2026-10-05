@@ -9,6 +9,7 @@ import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
 import { playSound } from "@/lib/sound";
+import { finalItemName } from "@/lib/utils/autoName";
 import { haptic } from "@/lib/utils/haptic";
 import { placeholderPhoto } from "@/lib/mock-data";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -31,12 +32,12 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
   const [color, setColor] = useState<ItemColor | null>(null);
   const [filling, setFilling] = useState(false);
 
-  const valid = name.trim().length >= 2 && !!category && !!color;
+  const valid = !!category && !!color;
 
   const submit = () => {
     if (!valid || !category || !color) return;
     addItem({
-      name: name.trim(),
+      name: finalItemName(name, category, color),
       category,
       color,
       tags: [tag("category", categoryLabel(category)), tag("color", colorLabel(color))],
@@ -103,7 +104,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
 
         {!valid && (name.length > 0 || category || color) && (
           <p role="alert" className="mt-3 text-sm text-amber-300">
-            {t("magic_fillAll")}
+            {t(!category ? "magic_pickCategory" : "magic_pickColor")}
           </p>
         )}
       </div>

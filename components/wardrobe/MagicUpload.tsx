@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TagChips } from "@/components/wardrobe/TagChips";
 import { analyzeImage, detectColorFromText } from "@/lib/ai/mock-ai";
+import { finalItemName } from "@/lib/utils/autoName";
 import { blobToCompactDataUrl, fileToDataUrl } from "@/lib/image";
 import { toast } from "@/lib/store/useToastStore";
 import { removeBackgroundFromImage } from "@/lib/utils/backgroundRemover";
@@ -116,7 +117,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const analyzing = drafts.length - ready.length;
 
   // Pflichtfelder: Name (mind. 2 Zeichen), Kategorie, Farbe
-  const isValid = (d: Draft) => d.name.trim().length >= 2 && !!d.category && !!d.color;
+  const isValid = (d: Draft) => !!d.category && !!d.color;
   const allValid = ready.length > 0 && ready.every(isValid);
 
   const save = () => {
@@ -127,7 +128,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
         const col = d.color as ItemColor;
         // Chips aus den gewählten Feldern, damit Tags und Felder übereinstimmen
         const tags = syncTag(syncTag(d.tags, "category", categoryLabel(cat)), "color", colorLabel(col));
-        return { name: d.name.trim(), image: d.image, tags, category: cat, color: col, hasTransparentBackground: d.transparent };
+        return { name: finalItemName(d.name, cat, col), image: d.image, tags, category: cat, color: col, hasTransparentBackground: d.transparent };
       }),
     );
     playSound("success");
@@ -296,7 +297,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
       )}
       {drafts.length > 0 && analyzing === 0 && !allValid && (
         <p role="alert" className="text-center text-sm text-amber-300">
-          {tr("magic_fillAll")}
+          {tr(ready.some((d) => !d.category) ? "magic_pickCategory" : "magic_pickColor")}
         </p>
       )}
     </div>
