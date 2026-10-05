@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Eraser, Loader2, RotateCcw, UploadCloud, Wand2, X } from "lucide-react";
+import { Camera, Check, Eraser, Loader2, RotateCcw, UploadCloud, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TagChips } from "@/components/wardrobe/TagChips";
@@ -53,6 +53,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const categoryOptions = useCategoryOptions();
   const addItems = useWardrobeStore((s) => s.addItems);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [dragging, setDragging] = useState(false);
 
@@ -116,7 +117,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const ready = drafts.filter((d) => d.status === "ready");
   const analyzing = drafts.length - ready.length;
 
-  // Pflichtfelder: Name (mind. 2 Zeichen), Kategorie, Farbe
+  // Pflichtfelder: Kategorie und Farbe (Name optional)
   const isValid = (d: Draft) => !!d.category && !!d.color;
   const allValid = ready.length > 0 && ready.every(isValid);
 
@@ -139,6 +140,18 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
 
   return (
     <div className="space-y-4">
+      {/* Kamera: öffnet auf dem Handy direkt die Rückkamera */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          if (e.target.files) void handleFiles(e.target.files);
+          e.target.value = ""; // gleiche Datei erneut wählbar
+        }}
+      />
       <input
         ref={inputRef}
         type="file"
@@ -175,6 +188,10 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
         <span className="font-display text-xl font-semibold">{tr("wardrobe_magic")}</span>
         <span className="text-sm text-zinc-400">{tr("magic_hint")}</span>
       </button>
+
+      <Button type="button" variant="glass" silent className="w-full" onClick={() => cameraRef.current?.click()}>
+        <Camera className="h-4 w-4" /> {tr("magic_camera")}
+      </Button>
 
       <AnimatePresence initial={false}>
         {drafts.map((d) => (
