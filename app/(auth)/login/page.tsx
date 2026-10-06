@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Apple, LogIn, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Apple, Loader2, LogIn, UserPlus } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/hooks/useTranslation";
 import Link from "next/link";
+import { ForgotPassword } from "@/components/auth/ForgotPassword";
 import { MIN_PASSWORD, useAuthStore } from "@/lib/store/useAuthStore";
 import { toast } from "@/lib/store/useToastStore";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,10 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
+  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const loginWithApple = useAuthStore((s) => s.loginWithApple);
+  const [busy, setBusy] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -38,28 +43,61 @@ export default function LoginPage() {
         ? t("auth_errPasswordShort")
         : null;
 
-  const submit = (e: React.FormEvent) => {
+  const errorText = (code: string) =>
+    code === "exists"
+      ? t("auth_errExists")
+      : code === "weakPassword"
+        ? t("auth_errPasswordShort")
+        : code === "confirmEmail"
+          ? t("auth_confirmEmail")
+          : code === "unavailable"
+            ? t("auth_errUnavailable")
+            : t("auth_errCredentials");
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setSubmitted(true);
     setAuthError(null);
     if (!EMAIL_RE.test(email.trim())) return;
     if (mode === "register" && username.trim().length < 2) return;
     if (password.length === 0 || (mode === "register" && password.length < MIN_PASSWORD)) return;
-    const result = mode === "register" ? register(email, username, password) : login(email, password);
+    setBusy(true);
+    const result = mode === "register" ? await register(email, username, password) : await login(email, password);
+    setBusy(false);
     if (!result.ok) {
-      setAuthError(
-        result.error === "exists"
-          ? t("auth_errExists")
-          : result.error === "weakPassword"
-            ? t("auth_errPasswordShort")
-            : t("auth_errCredentials"), // unbekannte E-Mail und falsches Passwort bewusst nicht unterscheiden
-      );
+      // unbekannte E-Mail und falsches Passwort liefern bewusst dieselbe Meldung
+      setAuthError(errorText(result.error));
       return;
     }
     toast(t("auth_welcome", { name: useAuthStore.getState().user?.username ?? "" }));
   };
 
-  const soon = () => toast(t("auth_soonToast"), t("auth_soon"));
+  // Rückkehr vom Anbieter mit Fehler (z. B. Google in Supabase nicht aktiviert / abgebrochen): Meldung zeigen
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search + "&" + window.location.hash.replace(/^#/, ""));
+    if (params.get("error") || params.get("error_description")) {
+      setAuthError(t("auth_errGoogle"));
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    // Zurück-Taste vom Anbieter: Button wieder freigeben
+    const reset = () => setBusy(false);
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const oauth = async (provider: "google" | "apple") => {
+    if (busy) return;
+    setAuthError(null);
+    setBusy(true);
+    // Bei Erfolg wechselt der Browser zum Anbieter und kehrt danach zurück
+    const result = await (provider === "google" ? loginWithGoogle() : loginWithApple());
+    if (!result.ok) {
+      setBusy(false);
+      setAuthError(t(provider === "google" ? "auth_errGoogle" : "auth_errProvider"));
+    }
+  };
 
   const fields = (
     <div className="space-y-3">
@@ -110,6 +148,17 @@ export default function LoginPage() {
         ) : (
           mode === "register" && <p className="text-[11px] text-zinc-500">{t("auth_passwordHint")}</p>
         )}
+        {mode === "login" && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setShowPasswordReset(true)}
+              className="text-sm text-accent-soft hover:text-white"
+            >
+              {t("auth_forgot")}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -158,8 +207,8 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full">
-            {t("auth_continue")}
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t("auth_continue")}
           </Button>
         </form>
 
@@ -170,22 +219,19 @@ export default function LoginPage() {
             <span className="h-px flex-1 bg-white/10" />
           </div>
 
-          {/* Social Login: noch nicht verfügbar – grau, aber klickbar (Toast) */}
-          {[
+          {([
             { id: "google", label: t("auth_google"), icon: <span className="text-base font-bold">G</span> },
             { id: "apple", label: t("auth_apple"), icon: <Apple className="h-5 w-5" /> },
-          ].map((p) => (
+          ] as const).map((p) => (
             <button
               key={p.id}
               type="button"
-              onClick={soon}
-              aria-disabled="true"
-              title={t("auth_soon")}
-              className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] text-sm font-medium text-zinc-500"
+              onClick={() => void oauth(p.id)}
+              disabled={busy}
+              className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] text-sm font-medium text-zinc-200 transition-colors hover:bg-white/10 disabled:opacity-50"
             >
               {p.icon}
               {p.label}
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-zinc-400">{t("auth_soon")}</span>
             </button>
           ))}
         </div>
@@ -195,6 +241,13 @@ export default function LoginPage() {
           <Link href="/imprint" className="hover:text-white">{t("legal_imprint")}</Link>
         </p>
       </div>
+    {showPasswordReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-surface p-6">
+            <ForgotPassword initialEmail={email} onBack={() => setShowPasswordReset(false)} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

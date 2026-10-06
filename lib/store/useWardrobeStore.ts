@@ -5,7 +5,8 @@ import { categoryFromLabel } from "@/lib/categories";
 import { colorFromLabel } from "@/lib/colors";
 import { applyVisibility, defaultVisibility, visibilityFromLegacy } from "@/lib/visibility";
 import { placeholderPhoto } from "@/lib/mock-data";
-import { MOCK_WARDROBE, uid } from "@/lib/mock/wardrobe";
+import { newId } from "@/lib/utils/uuid";
+import { MOCK_WARDROBE } from "@/lib/mock/wardrobe";
 import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from "@/types";
 
 export type NewItem = Pick<WardrobeItem, "name" | "image" | "tags" | "category"> & {
@@ -47,7 +48,7 @@ interface WardrobeState {
 }
 
 const build = (n: NewItem): WardrobeItem => ({
-  id: uid(),
+  id: newId(), // UUID, damit das Item 1:1 in Supabase gespeichert werden kann
   name: n.name,
   image: n.image,
   tags: n.tags,

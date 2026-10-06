@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { useHydrated } from "@/hooks/useHydrated";
+import { startWardrobeSync } from "@/lib/supabase-wardrobe";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
 
@@ -21,6 +22,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const hydrated = useHydrated();
+  const authReady = useAuthStore((s) => s.authReady);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authOnboarded = useAuthStore((s) => s.hasCompletedOnboarding);
   const styleOnboarded = useStyleStore((s) => s.hasOnboarded);
@@ -30,21 +32,40 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const onboarded = authOnboarded && styleOnboarded;
 
   let target: string | null = null;
-  const isLegal = pathname === "/privacy" || pathname === "/imprint";
-  if (hydrated && !isLegal) {
+  // Rechtstexte und die Passwort-Reset-Seite (Nutzer kommt mit Recovery-Sitzung aus der E-Mail) nie umleiten
+  const isLegal = pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password";
+  if (hydrated && authReady && !isLegal) {
     if (!isAuthenticated) target = pathname === "/login" ? null : "/login";
     else if (pathname === "/login") target = onboarded ? "/" : "/vibe-check";
     else if (!onboarded && pathname !== "/vibe-check") target = "/vibe-check";
   }
 
+  // Supabase-Sitzung laden und auf An-/Abmeldungen hören (auch bei Rückkehr vom Google-/Apple-Login)
   useEffect(() => {
-    if (hydrated) useAuthStore.getState().checkAuth(); // repariert inkonsistenten Zustand
+    if (!hydrated) return;
+    return useAuthStore.getState().init();
   }, [hydrated]);
+
+  // Kleiderschrank: nach dem Login aus Supabase laden und Änderungen automatisch speichern
+  const userId = useAuthStore((s) => s.user?.id);
+  useEffect(() => {
+    if (!userId) return;
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void startWardrobeSync(userId).then((s) => {
+      if (cancelled) s();
+      else stop = s;
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (target) router.replace(target);
   }, [target, router]);
 
-  if (!hydrated || target) return <PageSkeleton />;
+  if (!hydrated || (!authReady && !isLegal) || target) return <PageSkeleton />;
   return <>{children}</>;
 }
