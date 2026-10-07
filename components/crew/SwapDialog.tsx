@@ -82,6 +82,7 @@ export function SwapDialog({
                 <PickTile
                   key={l.itemId}
                   image={lookup(l.itemId)?.image}
+                  transparent={lookup(l.itemId)?.hasTransparentBackground}
                   name={l.name}
                   selected={targetId === l.itemId}
                   onClick={() => setTargetId(l.itemId)}
@@ -97,6 +98,7 @@ export function SwapDialog({
                 <PickTile
                   key={i.id}
                   image={i.image}
+                  transparent={i.hasTransparentBackground}
                   name={i.name}
                   selected={offeredId === i.id}
                   onClick={() => {

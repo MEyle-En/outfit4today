@@ -24,6 +24,29 @@ export async function removeBackgroundFromImage(
   }
 }
 
+/** Maximale Wartezeit auf die Freistellung (Modell-Download + Berechnung). */
+export const BG_REMOVAL_TIMEOUT_MS = 45_000;
+
+/**
+ * Wie removeBackgroundFromImage, bricht aber nach dem Timeout mit einem Fehler ab.
+ * Aufrufer behalten bei Fehler das Originalbild und zeigen einen dezenten Toast.
+ */
+export function removeBackgroundWithTimeout(file: File, ms = BG_REMOVAL_TIMEOUT_MS): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Background removal timed out")), ms);
+    removeBackgroundFromImage(file).then(
+      (blob) => {
+        clearTimeout(timer);
+        resolve(blob);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** Blob (z.B. das freigestellte PNG) als Data-URL, damit es im Store/localStorage gespeichert werden kann. */
 export function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

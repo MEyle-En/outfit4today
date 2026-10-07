@@ -1,6 +1,7 @@
 "use client";
 
 import { useItemLookup } from "@/hooks/useItemLookup";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { GRID, itemHeight } from "@/lib/lab";
 import type { FitLayer } from "@/types";
 
@@ -47,12 +48,7 @@ export function FitPreview({ layers }: { layers: FitLayer[] }) {
           >
             {item ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.image}
-                alt={l.name}
-                className={item.hasTransparentBackground ? "h-full w-full object-contain" : "h-full w-full object-cover"}
-                style={item.hasTransparentBackground ? { filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.35))" } : undefined}
-              />
+              <ItemImage src={item.image} alt={l.name} transparent={item.hasTransparentBackground} className="h-full w-full" />
             ) : (
               <span className="grid h-full place-items-center p-1 text-center text-[9px] text-zinc-400">{l.name}</span>
             )}

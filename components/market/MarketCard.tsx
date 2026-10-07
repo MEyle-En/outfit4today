@@ -4,11 +4,13 @@ import { useState } from "react";
 import { ArrowLeftRight, MessageCircle } from "lucide-react";
 import { ChatDialog } from "@/components/market/ChatDialog";
 import { LikeButton } from "@/components/ui/LikeButton";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel } from "@/lib/categories";
 import { swatchOf } from "@/lib/colors";
 import type { MarketListing } from "@/lib/mock/market";
 import { stagger } from "@/lib/stagger";
+import { cn } from "@/lib/utils";
 import { likeKey } from "@/lib/store/useSocialStore";
 
 export function MarketCard({
@@ -31,20 +33,21 @@ export function MarketCard({
 
   return (
     <article style={stagger(index)} className="animate-fade-in-up card-lift overflow-hidden rounded-2xl border border-white/10 bg-surface">
-      <div className="relative aspect-[4/5] bg-gradient-to-br from-zinc-800 to-zinc-900">
+      <div className={cn("relative aspect-[4/5]", !bundle && listing.transparent ? "" : "bg-gradient-to-br from-zinc-800 to-zinc-900")}>
         {bundle ? (
           // Bundle: Mosaik aus bis zu drei Teilen
           <div className="grid h-full w-full grid-cols-2 gap-0.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bundle.images[0]} alt="" className={`h-full w-full object-cover ${bundle.images.length > 1 ? "row-span-2" : "col-span-2 row-span-2"}`} />
+            <ItemImage
+              src={bundle.images[0]}
+              transparent={bundle.transparent?.[0]}
+              className={`h-full w-full ${bundle.images.length > 1 ? "row-span-2" : "col-span-2 row-span-2"}`}
+            />
             {bundle.images.slice(1, 3).map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={src} alt="" className="h-full w-full object-cover" />
+              <ItemImage key={i} src={src} transparent={bundle.transparent?.[i + 1]} className="h-full w-full" />
             ))}
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={listing.image} alt={listing.name} loading="lazy" className="h-full w-full object-cover" />
+          <ItemImage src={listing.image} alt={listing.name} transparent={listing.transparent} loading="lazy" className="h-full w-full" />
         )}
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
           {canBuy && (

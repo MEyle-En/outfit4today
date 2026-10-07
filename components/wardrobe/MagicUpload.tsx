@@ -10,7 +10,8 @@ import { analyzeImage, detectColorFromText } from "@/lib/ai/mock-ai";
 import { finalItemName } from "@/lib/utils/autoName";
 import { blobToCompactDataUrl, fileToDataUrl } from "@/lib/image";
 import { toast } from "@/lib/store/useToastStore";
-import { removeBackgroundFromImage } from "@/lib/utils/backgroundRemover";
+import { removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { uid } from "@/lib/mock/wardrobe";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,9 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   const cameraRef = useRef<HTMLInputElement>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [dragging, setDragging] = useState(false);
+  // Opt-in: Freistellen beim Hochladen (Standard AUS, weil es auf schwachen Geräten spürbar dauert)
+  const [autoRemove, setAutoRemove] = useState(false);
+  const autoRemoveRef = useRef(false);
 
   const patch = (id: string, p: Partial<Draft>) =>
     setDrafts((d) => d.map((x) => (x.id === id ? { ...x, ...p } : x)));
@@ -64,7 +68,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     if (!d.file || d.removing) return;
     patch(d.id, { removing: true });
     try {
-      const blob = await removeBackgroundFromImage(d.file);
+      const blob = await removeBackgroundWithTimeout(d.file);
       const image = await blobToCompactDataUrl(blob, 800);
       patch(d.id, { image, original: d.original ?? d.image, removing: false, transparent: true });
       playSound("success");
@@ -91,7 +95,10 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     await Promise.all(
       created.map(async ({ draft, file }) => {
         try {
-          patch(draft.id, { image: await fileToDataUrl(file), status: "ready" });
+          const image = await fileToDataUrl(file);
+          patch(draft.id, { image, status: "ready" });
+          // Schalter an: direkt freistellen (bei Fehler/Timeout bleibt das Original, siehe removeBg)
+          if (autoRemoveRef.current) await removeBg({ ...draft, image, file });
         } catch {
           setDrafts((d) => d.filter((x) => x.id !== draft.id));
         }
@@ -164,6 +171,23 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
         }}
       />
 
+      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+        <span>
+          <span className="block font-medium">{tr("bg_auto")}</span>
+          <span className="block text-xs text-zinc-400">{tr("bg_autoHint")}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          checked={autoRemove}
+          onChange={(e) => {
+            setAutoRemove(e.target.checked);
+            autoRemoveRef.current = e.target.checked;
+          }}
+          className="h-5 w-5 shrink-0 accent-[#a855f7]"
+        />
+      </label>
+
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -226,8 +250,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
               </div>
             ) : (
               <div className="flex gap-3 p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={d.image} alt={d.name} className="h-28 w-24 shrink-0 rounded-xl bg-black/30 object-cover" />
+                <ItemImage src={d.image} alt={d.name} transparent={d.transparent} className={`h-28 w-24 shrink-0 rounded-xl ${d.transparent ? "" : "bg-black/30"}`} />
                 <div className="min-w-0 flex-1 space-y-2">
                   {d.category === "lifestyle" && <CategoryBadge category="lifestyle" />}
                   <div className="flex items-start justify-between gap-2">

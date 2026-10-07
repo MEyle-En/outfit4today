@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import { blobToCompactDataUrl, rotateImage } from "@/lib/image";
-import { removeBackgroundFromImage } from "@/lib/utils/backgroundRemover";
+import { removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
 import { haptic } from "@/lib/utils/haptic";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
 import { colorLabel } from "@/lib/colors";
@@ -85,7 +85,7 @@ export function EditItemDialog({
     try {
       // Eine ausstehende Drehung wird vorher fest eingerechnet
       const src = rotation !== 0 ? await rotateImage(image, rotation) : image;
-      const blob = await removeBackgroundFromImage(await toFile(src));
+      const blob = await removeBackgroundWithTimeout(await toFile(src));
       // Data-URL statt Blob-URL: bleibt nach Speichern und Neuladen erhalten
       const result = await blobToCompactDataUrl(blob, 800);
       setOrigImage((o) => o ?? image);

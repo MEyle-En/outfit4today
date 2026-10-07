@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { MessageCircle, Package, Plus, ShoppingBag, X } from "lucide-react";
 import { ChatDialog } from "@/components/market/ChatDialog";
 import { ListItemDialog } from "@/components/profile/ListItemDialog";
@@ -29,8 +30,7 @@ function ListingRow({ item }: { item: WardrobeItem }) {
 
   return (
     <article className="animate-fade-in-up card-lift flex gap-3 rounded-2xl border border-white/10 bg-surface p-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.image} alt={item.name} className="h-24 w-20 shrink-0 rounded-xl object-cover" />
+      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} className="h-24 w-20 shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="truncate font-display text-lg font-semibold leading-tight">{item.name}</p>
@@ -88,8 +88,7 @@ function BundleRow({ bundle }: { bundle: BundleListing }) {
     <article className="flex gap-3 rounded-2xl border border-amber-300/30 bg-surface p-3">
       <div className="flex w-20 shrink-0 flex-wrap gap-0.5">
         {parts.slice(0, 4).map((p) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={p.id} src={p.image} alt={p.name} className="h-11 w-[38px] rounded-md object-cover" />
+          <ItemImage key={p.id} src={p.image} alt={p.name} transparent={p.hasTransparentBackground} className="h-11 w-[38px] rounded-md" />
         ))}
       </div>
       <div className="min-w-0 flex-1 space-y-2">

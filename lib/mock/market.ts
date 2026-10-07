@@ -14,7 +14,9 @@ export interface MarketListing {
   /** bei Verkauf oder "both", in € */
   price?: number;
   /** Gesetzt, wenn das Angebot ein Outfit-Bundle ist */
-  bundle?: { count: number; onlyTogether: boolean; images: string[] };
+  /** Freigestelltes Teil (ohne Kasten darstellen) */
+  transparent?: boolean;
+  bundle?: { count: number; onlyTogether: boolean; images: string[]; transparent?: boolean[] };
 }
 
 const SELLERS: Record<string, string> = { "f-mila": "Mila", "f-jonas": "Jonas", "f-lea": "Lea", "f-ava": "Ava" };
@@ -69,7 +71,13 @@ export function myBundleListings(bundles: BundleListing[], items: WardrobeItem[]
         color: parts[0].color ?? "multicolor",
         mode: "sell" as const,
         price: b.bundlePrice,
-        bundle: { count: parts.length, onlyTogether: b.onlyTogether, images: parts.slice(0, 3).map((p) => p.image) },
+        transparent: parts[0].hasTransparentBackground,
+        bundle: {
+          count: parts.length,
+          onlyTogether: b.onlyTogether,
+          images: parts.slice(0, 3).map((p) => p.image),
+          transparent: parts.slice(0, 3).map((p) => !!p.hasTransparentBackground),
+        },
       },
     ];
   });
@@ -85,6 +93,7 @@ export function myListings(items: WardrobeItem[]): MarketListing[] {
       mine: true,
       name: i.name,
       image: i.image,
+      transparent: i.hasTransparentBackground,
       category: i.category,
       color: i.color ?? "multicolor",
       mode: i.listing!,

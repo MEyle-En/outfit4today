@@ -91,6 +91,7 @@ export function ListItemDialog({
                 <PickTile
                   key={i.id}
                   image={i.image}
+                  transparent={i.hasTransparentBackground}
                   name={i.name}
                   selected={selected.includes(i.id)}
                   onClick={() => setSelected((s) => (s.includes(i.id) ? s.filter((x) => x !== i.id) : [...s, i.id]))}

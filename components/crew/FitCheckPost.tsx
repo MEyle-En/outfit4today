@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { ArrowLeftRight, Bookmark, Globe, MessageCircle, Send } from "lucide-react";
 import { FitPreview } from "@/components/crew/FitPreview";
 import { SwapDialog } from "@/components/crew/SwapDialog";
@@ -41,10 +42,9 @@ function SwapCard({ comment }: { comment: FitComment }) {
   const s = comment.swap!;
   const offered = lookup(s.offeredItemId);
   const target = lookup(s.targetItemId);
-  const thumb = (src?: string, alt = "") =>
+  const thumb = (src?: string, alt = "", transparent?: boolean) =>
     src ? (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={alt} className="h-14 w-11 rounded-lg object-cover" />
+      <ItemImage src={src} alt={alt} transparent={transparent} className="h-14 w-11 rounded-lg" />
     ) : (
       <div className="h-14 w-11 rounded-lg bg-zinc-800" />
     );
@@ -60,12 +60,12 @@ function SwapCard({ comment }: { comment: FitComment }) {
       </div>
       <div className="flex items-center gap-3">
         <div className="text-center">
-          {thumb(offered?.image, s.offeredName)}
+          {thumb(offered?.image, s.offeredName, offered?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.offeredName}</p>
         </div>
         <ArrowLeftRight className="h-4 w-4 shrink-0 text-accent-soft" />
         <div className="text-center">
-          {thumb(target?.image, s.targetName)}
+          {thumb(target?.image, s.targetName, target?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.targetName}</p>
         </div>
         <p className="flex-1 text-sm">{comment.text}</p>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
+import { cn } from "@/lib/utils";
 import { Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,10 +38,9 @@ export function ForgottenTreasures() {
 
       <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {forgotten.map(({ item, reason }) => (
-          <article key={item.id} className="w-40 shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-surface">
+          <article key={item.id} className={cn("w-40 shrink-0 snap-start overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}>
             <div className="relative aspect-[4/5]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
+              <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
               <Badge variant="glass" className="absolute left-2 top-2 bg-black/60 py-0.5 text-[10px] text-white">
                 {reason}
               </Badge>

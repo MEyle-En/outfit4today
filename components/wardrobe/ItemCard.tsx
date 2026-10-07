@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Pencil, Store, Tag, Trash2 } from "lucide-react";
+import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { ListItemDialog } from "@/components/profile/ListItemDialog";
 import { Badge } from "@/components/ui/badge";
 import { CategoryBadge } from "@/components/wardrobe/CategoryBadge";
@@ -41,10 +42,9 @@ export function ItemCard({
   return (
     <article
       style={stagger(index)}
-      className="animate-fade-in-up card-lift group relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface"
+      className={cn("animate-fade-in-up card-lift group relative aspect-[4/5] overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.image} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
+      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
 
       <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
         <button

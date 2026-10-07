@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { useRouter } from "next/navigation";
 import { CalendarCheck, Shirt, Sparkles } from "lucide-react";
 import { TodayItemActions } from "@/components/home/TodayItemActions";
@@ -115,8 +116,7 @@ export function TodayItem() {
           className="animate-fade-in-up space-y-3 rounded-2xl border border-white/10 bg-surface p-3"
         >
           <div className="flex gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={candidate.image} alt={candidate.name} className="aspect-[4/5] w-32 shrink-0 rounded-xl object-cover" />
+            <ItemImage src={candidate.image} alt={candidate.name} transparent={candidate.hasTransparentBackground} className="aspect-[4/5] w-32 shrink-0 rounded-xl" />
             <div className="min-w-0 flex-1 space-y-1">
               <p className="font-display text-2xl font-bold leading-tight">{candidate.name}</p>
               <p className="text-sm text-zinc-400">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { useDraggable } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Shirt } from "lucide-react";
@@ -16,12 +17,12 @@ export function TrayThumb({ item, dragging }: { item: WardrobeItem; dragging?: b
   return (
     <div
       className={cn(
-        "relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-surface",
+        "relative aspect-[4/5] overflow-hidden rounded-xl",
+        frameClass(item.hasTransparentBackground),
         dragging && "border-accent shadow-glow",
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.image} alt={item.name} draggable={false} className="pointer-events-none h-full w-full object-cover" />
+      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} draggable={false} className="pointer-events-none h-full w-full" />
       <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-4 text-[10px] font-medium">
         {item.name}
       </span>

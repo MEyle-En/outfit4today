@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { Rnd } from "react-rnd";
 import { RotateCw, X } from "lucide-react";
 import { playSound } from "@/lib/sound";
@@ -141,13 +142,7 @@ export function DraggableItem({ canvasItem, item, zIndex, selected, onSelect }: 
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.image}
-            alt={item.name}
-            draggable={false}
-            className={cn("pointer-events-none h-full w-full", cutout ? "object-contain" : "object-cover")}
-            style={cutout ? { filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))" } : undefined}
-          />
+          <ItemImage src={item.image} alt={item.name} transparent={cutout} draggable={false} className="pointer-events-none h-full w-full" />
           <div
             data-export-hide
             className={cn(

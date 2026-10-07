@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { useRouter } from "next/navigation";
 import { Check, Copy, Globe, Plus, Shirt, Sparkles, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -224,9 +225,8 @@ export function CrewView() {
 
               <div className="grid grid-cols-2 gap-3">
                 {friendItems.map((i, n) => (
-                  <article key={i.id} style={stagger(n)} className="animate-fade-in-up card-lift relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-surface">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={i.image} alt={i.name} loading="lazy" className="h-full w-full object-cover" />
+                  <article key={i.id} style={stagger(n)} className={cn("animate-fade-in-up card-lift relative aspect-[4/5] overflow-hidden rounded-2xl", frameClass(i.hasTransparentBackground))}>
+                    <ItemImage src={i.image} alt={i.name} transparent={i.hasTransparentBackground} loading="lazy" className="h-full w-full" />
                     <div className="absolute inset-x-0 bottom-0 space-y-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 pt-12">
                       <p className="truncate font-display text-base font-semibold leading-tight">{i.name}</p>
                       <div className="flex flex-wrap gap-1.5">
