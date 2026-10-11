@@ -11,6 +11,7 @@ import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from 
 
 export type NewItem = Pick<WardrobeItem, "name" | "image" | "tags" | "category"> & {
   color?: ItemColor;
+  size?: string;
   isPlaceholder?: boolean;
   hasTransparentBackground?: boolean;
   visibility?: Partial<Visibility>;
@@ -54,6 +55,7 @@ const build = (n: NewItem): WardrobeItem => ({
   tags: n.tags,
   category: n.category,
   color: n.color,
+  size: n.size,
   wearCount: 0,
   hasTransparentBackground: n.hasTransparentBackground,
   isPlaceholder: n.isPlaceholder ?? false,

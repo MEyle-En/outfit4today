@@ -15,6 +15,8 @@ import { placeholderPhoto } from "@/lib/mock-data";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { FieldLabel } from "@/components/wardrobe/FieldLabel";
+import { SizePicker } from "@/components/wardrobe/SizePicker";
+import { validSize } from "@/lib/sizes";
 import { colorLabel } from "@/lib/colors";
 import { tag } from "@/lib/mock/wardrobe";
 import type { ItemCategory, ItemColor } from "@/types";
@@ -30,6 +32,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ItemCategory | "">(""); // "" = noch nichts gewählt
   const [color, setColor] = useState<ItemColor | null>(null);
+  const [size, setSize] = useState<string | undefined>();
   const [filling, setFilling] = useState(false);
 
   const valid = !!category && !!color;
@@ -40,6 +43,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
       name: finalItemName(name, category, color),
       category,
       color,
+      size: validSize(category, size),
       tags: [tag("category", categoryLabel(category)), tag("color", colorLabel(color))],
       isPlaceholder: true,
       image: placeholderPhoto(category, color),
@@ -47,6 +51,7 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
     setName("");
     setCategory("");
     setColor(null);
+    setSize(undefined);
     playSound("success");
     haptic("success");
     onSaved?.(1);
@@ -95,7 +100,18 @@ export function QuickAdd({ onSaved }: { onSaved?: (count: number) => void }) {
 
         <div className="mt-3">
           <FieldLabel>{t("pick_category")}</FieldLabel>
-          <CategoryPicker value={category} options={categoryOptions} onChange={setCategory} wrap />
+          <CategoryPicker
+            value={category}
+            options={categoryOptions}
+            onChange={(c) => {
+              setCategory(c);
+              setSize((s) => validSize(c, s));
+            }}
+            wrap
+          />
+        </div>
+        <div className="mt-2">
+          <SizePicker category={category} value={size} onChange={setSize} />
         </div>
         <div className="mt-2">
           <FieldLabel>{t("pick_color")}</FieldLabel>

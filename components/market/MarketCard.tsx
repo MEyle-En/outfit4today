@@ -82,7 +82,8 @@ export function MarketCard({
         <div className="flex items-center gap-1.5 text-xs text-zinc-400">
           {swatch && <span className="h-3 w-3 shrink-0 rounded-full border border-white/20" style={{ background: swatch }} />}
           <span className="truncate">
-            {bundle ? t("bundle_parts", { n: bundle.count }) : categoryLabel(listing.category)} ·{" "}
+            {bundle ? t("bundle_parts", { n: bundle.count }) : categoryLabel(listing.category)}
+            {listing.size ? ` · ${listing.size}` : ""} ·{" "}
             {listing.mine ? t("market_yourListing") : listing.seller}
           </span>
         </div>

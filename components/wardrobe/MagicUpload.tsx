@@ -10,7 +10,7 @@ import { analyzeImage, detectColorFromText } from "@/lib/ai/mock-ai";
 import { finalItemName } from "@/lib/utils/autoName";
 import { blobToCompactDataUrl, fileToDataUrl } from "@/lib/image";
 import { toast } from "@/lib/store/useToastStore";
-import { removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
+import { REMOVAL_MAX_SIZE, removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
 import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { uid } from "@/lib/mock/wardrobe";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
@@ -24,6 +24,8 @@ import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { FieldLabel } from "@/components/wardrobe/FieldLabel";
 import { CategoryBadge } from "@/components/wardrobe/CategoryBadge";
+import { SizePicker } from "@/components/wardrobe/SizePicker";
+import { validSize } from "@/lib/sizes";
 import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
 import type { ItemCategory, ItemColor, ItemTag } from "@/types";
@@ -35,6 +37,7 @@ interface Draft {
   /** Leer, bis der Nutzer eine Kategorie wählt (keine automatische Zuweisung) */
   category: ItemCategory | "";
   color?: ItemColor;
+  size?: string;
   tags: ItemTag[];
   /** Auto-Fill läuft */
   filling?: boolean;
@@ -60,6 +63,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
   // Opt-in: Freistellen beim Hochladen (Standard AUS, weil es auf schwachen Geräten spürbar dauert)
   const [autoRemove, setAutoRemove] = useState(false);
   const autoRemoveRef = useRef(false);
+  const removalQueue = useRef<Promise<void>>(Promise.resolve());
 
   const patch = (id: string, p: Partial<Draft>) =>
     setDrafts((d) => d.map((x) => (x.id === id ? { ...x, ...p } : x)));
@@ -69,7 +73,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     patch(d.id, { removing: true });
     try {
       const blob = await removeBackgroundWithTimeout(d.file);
-      const image = await blobToCompactDataUrl(blob, 800);
+      const image = await blobToCompactDataUrl(blob, REMOVAL_MAX_SIZE);
       patch(d.id, { image, original: d.original ?? d.image, removing: false, transparent: true });
       playSound("success");
       toast(tr("bg_done"));
@@ -95,10 +99,12 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     await Promise.all(
       created.map(async ({ draft, file }) => {
         try {
-          const image = await fileToDataUrl(file);
+          const image = await fileToDataUrl(file, 2000, 0.85);
           patch(draft.id, { image, status: "ready" });
           // Schalter an: direkt freistellen (bei Fehler/Timeout bleibt das Original, siehe removeBg)
-          if (autoRemoveRef.current) await removeBg({ ...draft, image, file });
+          if (autoRemoveRef.current) {
+            removalQueue.current = removalQueue.current.then(() => removeBg({ ...draft, image, file }));
+          }
         } catch {
           setDrafts((d) => d.filter((x) => x.id !== draft.id));
         }
@@ -136,7 +142,15 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
         const col = d.color as ItemColor;
         // Chips aus den gewählten Feldern, damit Tags und Felder übereinstimmen
         const tags = syncTag(syncTag(d.tags, "category", categoryLabel(cat)), "color", colorLabel(col));
-        return { name: finalItemName(d.name, cat, col), image: d.image, tags, category: cat, color: col, hasTransparentBackground: d.transparent };
+        return {
+          name: finalItemName(d.name, cat, col),
+          image: d.image,
+          tags,
+          category: cat,
+          color: col,
+          size: validSize(cat, d.size),
+          hasTransparentBackground: d.transparent,
+        };
       }),
     );
     playSound("success");
@@ -305,11 +319,13 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
                       category &&
                       patch(d.id, {
                         category,
+                        size: validSize(category, d.size),
                         // Kategorie-Chip mitziehen, damit Tag und Auswahl nicht auseinanderlaufen
                         tags: d.tags.map((tg) => (tg.kind === "category" ? { ...tg, label: categoryLabel(category) } : tg)),
                       })
                     }
                   />
+                  <SizePicker category={d.category} value={d.size} onChange={(size) => patch(d.id, { size })} />
                   <FieldLabel>{tr("pick_color")}</FieldLabel>
                   <ColorPicker
                     value={d.color}

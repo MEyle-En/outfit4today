@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { useHydrated } from "@/hooks/useHydrated";
+import { warmupBackgroundRemoval } from "@/lib/utils/backgroundRemover";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
@@ -50,6 +51,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const userId = useAuthStore((s) => s.user?.id);
   useEffect(() => {
     if (!userId) return;
+    warmupBackgroundRemoval(); // Modell im Leerlauf vorladen
     let stop: (() => void) | undefined;
     let cancelled = false;
     void startWardrobeSync(userId).then((s) => {

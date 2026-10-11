@@ -47,6 +47,8 @@ export interface WardrobeItem {
   tags: ItemTag[];
   category: ItemCategory;
   color?: ItemColor;
+  /** Optional: XS–XXL bzw. EU-Schuhgröße 35–47 */
+  size?: string;
   /** Wer sieht / nutzt das Teil? Kanäle sind kombinierbar (siehe lib/visibility.ts) */
   visibility: Visibility;
   /** Marktplatz: zum Tausch/Verkauf angeboten (fehlt = nicht gelistet) */

@@ -99,6 +99,7 @@ export function ItemCard({
         <p className="truncate font-display text-base font-semibold leading-tight">{item.name}</p>
         <div className="flex flex-wrap gap-1.5">
           <CategoryBadge category={item.category} />
+          {item.size && <Badge>{item.size}</Badge>}
           {onMarket && (
             <Badge className="border-amber-300/40 bg-amber-400/20 text-amber-200">
               <Store className="h-3 w-3" /> 💰 {t("item_listed")}

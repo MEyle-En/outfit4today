@@ -14,6 +14,8 @@ export interface MarketListing {
   /** bei Verkauf oder "both", in € */
   price?: number;
   /** Gesetzt, wenn das Angebot ein Outfit-Bundle ist */
+  /** Größe (XS–XXL / EU-Schuhgröße), falls angegeben */
+  size?: string;
   /** Freigestelltes Teil (ohne Kasten darstellen) */
   transparent?: boolean;
   bundle?: { count: number; onlyTogether: boolean; images: string[]; transparent?: boolean[] };
@@ -93,6 +95,7 @@ export function myListings(items: WardrobeItem[]): MarketListing[] {
       mine: true,
       name: i.name,
       image: i.image,
+      size: i.size,
       transparent: i.hasTransparentBackground,
       category: i.category,
       color: i.color ?? "multicolor",

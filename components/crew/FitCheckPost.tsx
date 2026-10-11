@@ -62,11 +62,13 @@ function SwapCard({ comment }: { comment: FitComment }) {
         <div className="text-center">
           {thumb(offered?.image, s.offeredName, offered?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.offeredName}</p>
+          {offered?.size && <p className="text-[10px] font-semibold text-accent-soft">{offered.size}</p>}
         </div>
         <ArrowLeftRight className="h-4 w-4 shrink-0 text-accent-soft" />
         <div className="text-center">
           {thumb(target?.image, s.targetName, target?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.targetName}</p>
+          {target?.size && <p className="text-[10px] font-semibold text-accent-soft">{target.size}</p>}
         </div>
         <p className="flex-1 text-sm">{comment.text}</p>
       </div>

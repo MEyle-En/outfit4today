@@ -23,6 +23,37 @@ export function fileToDataUrl(file: File, maxSize = 640, quality = 0.75): Promis
   });
 }
 
+/**
+ * Verkleinert ein Foto im Browser (Canvas) auf max. `maxSize` px Kantenlänge und liefert es als JPEG-File.
+ * Transparente Flächen werden weiß hinterlegt (JPEG kennt keine Transparenz). Kleinere Bilder bleiben so groß.
+ * Bei jedem Problem (Format nicht lesbar etc.) wird die Originaldatei zurückgegeben.
+ */
+export async function downscaleFile(file: File, maxSize: number, quality: number): Promise<File> {
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Bild konnte nicht gelesen werden"));
+      i.src = url;
+    }).finally(() => URL.revokeObjectURL(url));
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", quality));
+    if (!blob || (scale === 1 && blob.size >= file.size)) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 export interface CropArea {
   x: number;
   y: number;

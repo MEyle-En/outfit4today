@@ -1,3 +1,5 @@
+import { downscaleFile } from "@/lib/image";
+
 /**
  * Entfernt den Hintergrund eines Fotos direkt im Browser (@imgly/background-removal).
  *
@@ -26,6 +28,23 @@ export async function removeBackgroundFromImage(
 
 /** Maximale Wartezeit auf die Freistellung (Modell-Download + Berechnung). */
 export const BG_REMOVAL_TIMEOUT_MS = 45_000;
+/** Kantenlänge, auf die das Foto vor der Freistellung verkleinert wird. */
+export const REMOVAL_MAX_SIZE = 1600;
+
+/**
+ * Lädt Bibliothek und KI-Modell im Leerlauf vor (nach dem Login), damit die erste Freistellung nicht auf den
+ * Download warten muss. Fehler werden still ignoriert. Mit "Datensparmodus" oder langsamer Verbindung passiert nichts.
+ */
+export function warmupBackgroundRemoval(): void {
+  if (typeof window === "undefined") return;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (conn?.saveData || (conn?.effectiveType && conn.effectiveType !== "4g")) return;
+  const run = () => {
+    import("@imgly/background-removal").then((m) => m.preload()).catch(() => {});
+  };
+  const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  setTimeout(() => (ric ? ric(run, { timeout: 5000 }) : run()), 2000);
+}
 
 /**
  * Wie removeBackgroundFromImage, bricht aber nach dem Timeout mit einem Fehler ab.
@@ -34,7 +53,8 @@ export const BG_REMOVAL_TIMEOUT_MS = 45_000;
 export function removeBackgroundWithTimeout(file: File, ms = BG_REMOVAL_TIMEOUT_MS): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Background removal timed out")), ms);
-    removeBackgroundFromImage(file).then(
+    // Erst verkleinern (max. 1600 px, JPEG 0.9): deutlich schneller, das Ergebnis wird ohnehin auf Kachelgröße gezeigt
+    downscaleFile(file, REMOVAL_MAX_SIZE, 0.9).then(removeBackgroundFromImage).then(
       (blob) => {
         clearTimeout(timer);
         resolve(blob);

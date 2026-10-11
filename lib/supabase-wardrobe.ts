@@ -27,6 +27,7 @@ interface Row {
   image_url: string;
   category: string | null;
   color: string | null;
+  size: string | null;
   tags: ItemTag[] | null;
   visibility: Visibility | null;
   listing: string | null;
@@ -55,6 +56,7 @@ function rowToItem(r: Row): WardrobeItem {
     tags,
     category: (r.category as ItemCategory | null) ?? categoryFromLabel(tags.find((t) => t.kind === "category")?.label),
     color: (r.color ?? undefined) as ItemColor | undefined,
+    size: r.size ?? undefined,
     visibility: r.visibility ?? visibilityFromLegacy({ listing }),
     listing,
     price: r.price ?? undefined,
@@ -72,6 +74,7 @@ const itemToRow = (userId: string, i: WardrobeItem): Row => ({
   image_url: i.image,
   category: i.category,
   color: i.color ?? null,
+  size: i.size ?? null,
   tags: i.tags,
   visibility: i.visibility,
   listing: i.listing ?? null,
@@ -157,8 +160,9 @@ export async function startWardrobeSync(userId: string): Promise<() => void> {
         removed.forEach((id) => known.delete(id));
       }
 
-      for (const item of current) {
-        if (known.get(item.id) === item) continue;
+      const pending = current.filter((item) => known.get(item.id) !== item);
+      // Teile parallel (je: erst Storage-Upload, dann DB-Zeile), ein Fehler stoppt die anderen nicht
+      const results = await Promise.allSettled(pending.map(async (item) => {
         let next = item;
         if (!UUID_RE.test(item.id)) next = { ...item, id: newId() }; // alte Kurz-IDs -> UUID
         const image = await uploadImage(userId, next);
@@ -170,7 +174,9 @@ export async function startWardrobeSync(userId: string): Promise<() => void> {
         if (next !== item) {
           store.setState((s) => ({ items: s.items.map((i) => (i === item ? next : i)) }));
         }
-      }
+      }));
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      if (failed) throw failed.reason;
     } catch (e) {
       reportError(e);
     } finally {

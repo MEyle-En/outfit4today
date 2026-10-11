@@ -47,6 +47,7 @@ function ListingRow({ item }: { item: WardrobeItem }) {
           <Badge variant="default">
             {item.listing === "swap" ? t("mode_swap") : `💰 ${item.price ?? t("price_vb")} €${item.listing === "both" ? ` · ${t("mode_swap")}` : ""}`}
           </Badge>
+          {item.size && <Badge>{item.size}</Badge>}
           <Badge>{t("mine_public")}</Badge>
           {item.visibility.sharedWithCrew && <Badge>{t("vis_crew")}</Badge>}
         </div>

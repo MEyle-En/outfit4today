@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/wardrobe/ColorPicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import { blobToCompactDataUrl, rotateImage } from "@/lib/image";
-import { removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
+import { REMOVAL_MAX_SIZE, removeBackgroundWithTimeout } from "@/lib/utils/backgroundRemover";
 import { haptic } from "@/lib/utils/haptic";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
+import { SizePicker } from "@/components/wardrobe/SizePicker";
+import { validSize } from "@/lib/sizes";
 import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
 import { toast } from "@/lib/store/useToastStore";
@@ -46,6 +48,7 @@ export function EditItemDialog({
   const [name, setName] = useState(item.name);
   const [category, setCategory] = useState<ItemCategory>(item.category);
   const [color, setColor] = useState<ItemColor | undefined>(item.color);
+  const [size, setSize] = useState<string | undefined>(item.size);
   const [vis, setVis] = useState<Visibility>(item.visibility);
   const [mode, setMode] = useState<Mode>(item.listing ?? "sell");
   const [price, setPrice] = useState(item.price != null ? String(item.price) : "");
@@ -87,7 +90,7 @@ export function EditItemDialog({
       const src = rotation !== 0 ? await rotateImage(image, rotation) : image;
       const blob = await removeBackgroundWithTimeout(await toFile(src));
       // Data-URL statt Blob-URL: bleibt nach Speichern und Neuladen erhalten
-      const result = await blobToCompactDataUrl(blob, 800);
+      const result = await blobToCompactDataUrl(blob, REMOVAL_MAX_SIZE);
       setOrigImage((o) => o ?? image);
       setImage(result);
       setRotation(0);
@@ -126,7 +129,7 @@ export function EditItemDialog({
     // Kategorie- und Farb-Chip mitführen, damit Tags und Felder nicht auseinanderlaufen
     let tags = syncTag(item.tags, "category", categoryLabel(category));
     if (color) tags = syncTag(tags, "color", colorLabel(color));
-    updateItem(item.id, { image: finalImage, hasTransparentBackground: transparent, name: name.trim(), category, color, tags });
+    updateItem(item.id, { image: finalImage, hasTransparentBackground: transparent, name: name.trim(), category, color, size: validSize(category, size), tags });
     setVisibility(item.id, vis); // Marketplace aus => Angebot wird zurückgezogen
     if (vis.onMarketplace) setListing([item.id], mode, mode === "swap" ? undefined : Number(price));
     toast(t("toast_saved"));
@@ -222,7 +225,11 @@ export function EditItemDialog({
             <select
               id="edit-cat"
               value={category}
-              onChange={(e) => setCategory(e.target.value as ItemCategory)}
+              onChange={(e) => {
+                const c = e.target.value as ItemCategory;
+                setCategory(c);
+                setSize((s) => validSize(c, s));
+              }}
               className="h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-3 text-base text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
             >
               {CATEGORIES.map((c) => (
@@ -232,6 +239,8 @@ export function EditItemDialog({
               ))}
             </select>
           </div>
+
+          <SizePicker category={category} value={size} onChange={setSize} />
 
           <div className="space-y-1.5">
             <p className="text-sm font-semibold">{t("color")}</p>
