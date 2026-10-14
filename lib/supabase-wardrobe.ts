@@ -45,7 +45,7 @@ const isMock = (id: string) => MOCK_IDS.has(id);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function rowToItem(r: Row): WardrobeItem {
+export function rowToItem(r: Row): WardrobeItem {
   const tags = r.tags ?? [];
   const listing = (r.listing ?? undefined) as WardrobeItem["listing"];
   return {

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Globe, Plus, Shirt, Sparkles, Users } from "lucide-react";
+import { Check, Copy, Globe, LogIn, LogOut, Plus, Shirt, Sparkles, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +14,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
-import { FRIEND_ITEMS, MOCK_FRIENDS, getPerson } from "@/lib/mock/crew";
-import { inviteLink, useCrewStore, type CrewTab } from "@/lib/store/useCrewStore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCrewItems } from "@/lib/supabase-crews";
+import { useAuthStore } from "@/lib/store/useAuthStore";
+import { inviteUrl } from "@/lib/utils/pendingJoin";
+import { useCrewStore, type CrewTab } from "@/lib/store/useCrewStore";
 import { stagger } from "@/lib/stagger";
 import { cn } from "@/lib/utils";
-import type { ItemCategory } from "@/types";
+import type { FriendItem, ItemCategory } from "@/types";
+
+const NO_MEMBERS: never[] = [];
 
 function CreateCrewDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { t } = useTranslation();
   const createCrew = useCrewStore((s) => s.createCrew);
   const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,17 +38,74 @@ function CreateCrewDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         <DialogDescription>{t("crew_newDesc")}</DialogDescription>
         <form
           className="mt-5 space-y-4"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            if (!name.trim()) return;
-            createCrew(name);
-            setName("");
-            onOpenChange(false);
+            if (!name.trim() || busy) return;
+            setBusy(true);
+            const crew = await createCrew(name);
+            setBusy(false);
+            if (crew) {
+              setName("");
+              onOpenChange(false);
+            }
           }}
         >
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("crew_namePlaceholder")} aria-label={t("crew_nameAria")} autoFocus />
-          <Button type="submit" size="lg" className="w-full" disabled={!name.trim()}>
+          <Button type="submit" size="lg" className="w-full" disabled={!name.trim() || busy}>
             {t("crew_create")}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function JoinCrewDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { t } = useTranslation();
+  const joinCrew = useCrewStore((s) => s.joinCrew);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle>{t("crew_join")}</DialogTitle>
+        <DialogDescription>{t("crew_joinDesc")}</DialogDescription>
+        <form
+          className="mt-5 space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!code.trim() || busy) return;
+            setBusy(true);
+            setError(null);
+            const result = await joinCrew(code);
+            setBusy(false);
+            if (result.ok) {
+              setCode("");
+              onOpenChange(false);
+            } else {
+              setError(t(result.error === "invalid" ? "crew_errInvalidCode" : "crew_errJoin"));
+            }
+          }}
+        >
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder={t("crew_codePlaceholder")}
+            aria-label={t("crew_code")}
+            autoCapitalize="characters"
+            autoComplete="off"
+            maxLength={16}
+            autoFocus
+          />
+          {error && (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
+            </p>
+          )}
+          <Button type="submit" size="lg" className="w-full" disabled={!code.trim() || busy}>
+            {t("crew_joinBtn")}
           </Button>
         </form>
       </DialogContent>
@@ -55,6 +118,9 @@ export function CrewView() {
   const router = useRouter();
   const categoryOptions = useCategoryOptions();
   const crews = useCrewStore((s) => s.crews);
+  const crewsLoaded = useCrewStore((s) => s.crewsLoaded);
+  const leaveCrew = useCrewStore((s) => s.leaveCrew);
+  const meId = useAuthStore((s) => s.user?.id);
   const activeCrewId = useCrewStore((s) => s.activeCrewId);
   const setActiveCrew = useCrewStore((s) => s.setActiveCrew);
   const allPosts = useCrewStore((s) => s.posts);
@@ -62,6 +128,9 @@ export function CrewView() {
   const setTab = useCrewStore((s) => s.setCrewTab);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [crewItems, setCrewItems] = useState<FriendItem[]>([]);
   const [copied, setCopied] = useState(false);
   const [owner, setOwner] = useState<string>("all");
   const [category, setCategory] = useState<ItemCategory | "all">("all");
@@ -88,24 +157,41 @@ export function CrewView() {
     () => allPosts.filter((p) => p.crewId === crew?.id).sort((a, b) => b.createdAt - a.createdAt),
     [allPosts, crew?.id],
   );
+  const members = useCrewStore((s) => (crew ? s.members[crew.id] : undefined)) ?? NO_MEMBERS;
+  const memberName = (id: string) => (id === meId ? t("crew_you") : members.find((m) => m.id === id)?.name ?? "");
+
+  // Geteilte Teile der anderen Mitglieder aus Supabase (die Datenbank liefert nur, was freigegeben ist)
+  const memberKey = crew?.memberIds.join(",") ?? "";
+  useEffect(() => {
+    let cancelled = false;
+    setOwner("all");
+    if (!crew) {
+      setCrewItems([]);
+      return;
+    }
+    getCrewItems(crew.memberIds)
+      .then((items) => !cancelled && setCrewItems(items))
+      .catch(() => !cancelled && setCrewItems([]));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crew?.id, memberKey]);
+
   const friendItems = useMemo(
     () =>
-      FRIEND_ITEMS.filter(
-        (i) =>
-          crew?.memberIds.includes(i.ownerId) &&
-          i.visibility.sharedWithCrew && // Privacy: nur freigegebene Teile
-          (owner === "all" || i.ownerId === owner) &&
-          (category === "all" || i.category === category),
+      crewItems.filter(
+        (i) => (owner === "all" || i.ownerId === owner) && (category === "all" || i.category === category),
       ),
-    [crew, owner, category],
+    [crewItems, owner, category],
   );
 
   const copy = async () => {
     if (!crew) return;
     try {
-      await navigator.clipboard.writeText(inviteLink(crew.inviteCode));
+      await navigator.clipboard.writeText(inviteUrl(crew.inviteCode)); // immer die echte Origin, nie eine feste Domain
     } catch {
-      /* Clipboard nicht verfügbar – Link bleibt sichtbar */
+      /* Clipboard nicht verfügbar – der Code bleibt sichtbar */
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
@@ -134,34 +220,56 @@ export function CrewView() {
         >
           <Plus className="h-4 w-4" />
         </button>
+        <button
+          onClick={() => setJoinOpen(true)}
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-white/20 px-3 text-sm text-zinc-400 hover:border-accent hover:text-accent-soft"
+        >
+          <LogIn className="h-4 w-4" /> {t("crew_join")}
+        </button>
       </div>
       <CreateCrewDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <JoinCrewDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      {!crewsLoaded && crews.length === 0 && <Skeleton className="h-24 w-full" />}
 
       {crew && (
         <div className="glass space-y-3 rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex -space-x-2">
-              {crew.memberIds.map((id) => (
-                getPerson(id).avatar ? (
+              {members.slice(0, 8).map((m) =>
+                m.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={id} src={getPerson(id).avatar} alt={getPerson(id).name} title={getPerson(id).name} className="h-8 w-8 rounded-full border-2 border-surface object-cover" />
+                  <img key={m.id} src={m.avatar} alt={memberName(m.id)} title={memberName(m.id)} className="h-8 w-8 rounded-full border-2 border-surface object-cover" />
                 ) : (
-                  <div key={id} title={getPerson(id).name} className={cn("h-8 w-8 rounded-full border-2 border-surface bg-gradient-to-br", getPerson(id).gradient)} />
-                )
-              ))}
+                  <div key={m.id} title={memberName(m.id)} className={cn("h-8 w-8 rounded-full border-2 border-surface bg-gradient-to-br", m.gradient)} />
+                ),
+              )}
             </div>
-            <span className="text-xs text-zinc-500">{t("crew_members", { n: crew.memberIds.length + 1 })}</span>
+            <span className="text-xs text-zinc-500">{t("crew_members", { n: crew.memberIds.length })}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div dir="ltr" className="min-w-0 flex-1 truncate rounded-xl bg-black/30 px-3 py-2 text-xs text-zinc-400">
-              {inviteLink(crew.inviteCode)}
+            <div dir="ltr" className="min-w-0 flex-1 rounded-xl bg-black/30 px-3 py-2">
+              <span className="block text-[10px] uppercase tracking-wide text-zinc-500">{t("crew_codeManual")}</span>
+              <span className="block truncate font-mono text-base font-semibold tracking-widest text-white">{crew.inviteCode}</span>
             </div>
             <Button size="sm" variant="glass" onClick={copy}>
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? t("crew_copied") : t("crew_invite")}
+              {copied ? t("crew_copied") : t("crew_copyLink")}
             </Button>
           </div>
-          <p className="text-[11px] text-zinc-500">{t("crew_inviteMock")}</p>
+          <button
+            onClick={async () => {
+              if (!confirmLeave) {
+                setConfirmLeave(true);
+                setTimeout(() => setConfirmLeave(false), 3000);
+                return;
+              }
+              setConfirmLeave(false);
+              await leaveCrew(crew.id);
+            }}
+            className={cn("flex items-center gap-1.5 text-xs", confirmLeave ? "text-red-300" : "text-zinc-500 hover:text-white")}
+          >
+            <LogOut className="h-3.5 w-3.5" /> {confirmLeave ? t("crew_leaveConfirm") : t("crew_leave")}
+          </button>
         </div>
       )}
 
@@ -188,7 +296,7 @@ export function CrewView() {
 
         <TabsContent value="fits" className="space-y-4">
           {!crew ? (
-            noCrew
+            crewsLoaded ? noCrew : null
           ) : posts.length === 0 ? (
             <EmptyState
               icon={Sparkles}
@@ -208,7 +316,7 @@ export function CrewView() {
           ) : (
             <>
               <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-                {[{ id: "all", name: t("all") }, ...MOCK_FRIENDS.filter((f) => crew.memberIds.includes(f.id))].map((f) => (
+                {[{ id: "all", name: t("all") }, ...members.filter((m) => m.id !== meId)].map((f) => (
                   <button
                     key={f.id}
                     onClick={() => setOwner(f.id)}
@@ -231,7 +339,7 @@ export function CrewView() {
                       <p className="truncate font-display text-base font-semibold leading-tight">{i.name}</p>
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="default">{categoryLabel(i.category)}</Badge>
-                        <Badge>{getPerson(i.ownerId).name}</Badge>
+                        <Badge>{memberName(i.ownerId)}</Badge>
                       </div>
                     </div>
                   </article>

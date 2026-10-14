@@ -5,6 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { useHydrated } from "@/hooks/useHydrated";
 import { warmupBackgroundRemoval } from "@/lib/utils/backgroundRemover";
+import { translate } from "@/lib/i18n/translate";
+import { toast } from "@/lib/store/useToastStore";
+import { clearPendingJoin, getPendingJoin } from "@/lib/utils/pendingJoin";
+import { useCrewStore } from "@/lib/store/useCrewStore";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
@@ -34,7 +38,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   let target: string | null = null;
   // Rechtstexte und die Passwort-Reset-Seite (Nutzer kommt mit Recovery-Sitzung aus der E-Mail) nie umleiten
-  const isLegal = pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password";
+  const isLegal =
+    pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password" || pathname.startsWith("/join/");
   if (hydrated && authReady && !isLegal) {
     if (!isAuthenticated) target = pathname === "/login" ? null : "/login";
     else if (pathname === "/login") target = onboarded ? "/" : "/vibe-check";
@@ -63,6 +68,34 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       stop?.();
     };
   }, [userId]);
+
+  // Crews aus Supabase laden; beim Abmelden/Kontowechsel zurücksetzen
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void useCrewStore
+      .getState()
+      .loadCrews()
+      .then(async () => {
+        // Einladungslink vor dem Login geöffnet? Genau einmal beitreten, Eintrag sofort löschen (kein Re-Join bei Reload)
+        const code = getPendingJoin();
+        if (!code || cancelled) return;
+        clearPendingJoin();
+        const result = await useCrewStore.getState().joinCrew(code);
+        if (!result.ok) {
+          toast(translate(result.error === "invalid" ? "crew_errInvalidCode" : "crew_errJoin"), undefined, "error");
+          return;
+        }
+        useCrewStore.getState().setWardrobeView("crew");
+        useCrewStore.getState().setCrewTab("fits");
+        // Neue Konten gehen erst durch den Vibe Check; die Crew ist trotzdem schon beigetreten
+        if (useAuthStore.getState().hasCompletedOnboarding && useStyleStore.getState().hasOnboarded) router.replace("/wardrobe");
+      });
+    return () => {
+      cancelled = true;
+      useCrewStore.getState().resetCloud();
+    };
+  }, [userId, router]);
 
   useEffect(() => {
     if (target) router.replace(target);

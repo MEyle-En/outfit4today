@@ -1,18 +1,25 @@
 import { STORAGE } from "@/lib/storage-keys";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FRIEND_ITEMS, MOCK_FRIENDS, SEED_CREWS, SEED_POSTS } from "@/lib/mock/crew";
+import { FRIEND_ITEMS, SEED_POSTS } from "@/lib/mock/crew";
+import * as cloud from "@/lib/supabase-crews";
+import { toast } from "@/lib/store/useToastStore";
 import { translate } from "@/lib/i18n/translate";
 import { uid } from "@/lib/mock/wardrobe";
 import { notify } from "@/lib/store/useNotificationStore";
 import { likeKey, useSocialStore } from "@/lib/store/useSocialStore";
-import type { Crew, FitComment, FitLayer, FitPost, ReactionType } from "@/types";
+import type { Crew, FitComment, FitLayer, FitPost, Person, ReactionType } from "@/types";
 
 type WardrobeView = "mine" | "crew";
 export type CrewTab = "fits" | "items" | "public";
 
 interface CrewState {
+  /** Aus Supabase geladen (nicht lokal gespeichert) */
   crews: Crew[];
+  /** Mitglieder mit Profildaten je Crew-ID */
+  members: Record<string, Person[]>;
+  /** true, sobald die Crews einmal geladen wurden (verhindert kurzes Aufblitzen des Leerzustands) */
+  crewsLoaded: boolean;
   activeCrewId: string | null;
   posts: FitPost[];
   /** UI-Zustand (nicht persistiert): welcher Wardrobe-Tab / Crew-Unterbereich ist offen */
@@ -20,7 +27,12 @@ interface CrewState {
   crewTab: CrewTab;
   setWardrobeView: (v: WardrobeView) => void;
   setCrewTab: (t: CrewTab) => void;
-  createCrew: (name: string) => Crew;
+  loadCrews: () => Promise<void>;
+  /** Setzt den Cloud-Zustand zurück (Abmelden / Kontowechsel) */
+  resetCloud: () => void;
+  createCrew: (name: string) => Promise<Crew | null>;
+  joinCrew: (code: string) => Promise<cloud.JoinResult>;
+  leaveCrew: (crewId: string) => Promise<boolean>;
   setActiveCrew: (id: string) => void;
   /** crewId = null: Fit wird nur öffentlich gepostet (Public Inspo), ohne Crew */
   sendFit: (input: { crewId: string | null; layers: FitLayer[]; caption: string; isPublic?: boolean }) => string;
@@ -30,9 +42,6 @@ interface CrewState {
   clearAll: () => void;
 }
 
-export const inviteLink = (code: string) => `https://outfit4today.app/join/${code}`;
-
-const code = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
 /** Mock: andere liken meinen öffentlichen Fit (zeitversetzt) und lösen Benachrichtigungen aus. */
 function simulatePublicLikes(postId: string, isStillPublic: () => boolean) {
@@ -51,25 +60,71 @@ function simulatePublicLikes(postId: string, isStillPublic: () => boolean) {
 export const useCrewStore = create<CrewState>()(
   persist(
     (set, get) => ({
-      crews: SEED_CREWS,
-      activeCrewId: SEED_CREWS[0].id,
+      crews: [],
+      members: {},
+      crewsLoaded: false,
+      activeCrewId: null,
       posts: SEED_POSTS,
       wardrobeView: "mine",
       crewTab: "fits",
       setWardrobeView: (wardrobeView) => set({ wardrobeView }),
       setCrewTab: (crewTab) => set({ crewTab }),
 
-      createCrew: (name) => {
-        // Mock: Freunde "treten sofort bei", damit die Crew nicht leer ist
-        const crew: Crew = {
-          id: uid(),
-          name: name.trim(),
-          inviteCode: code(),
-          memberIds: MOCK_FRIENDS.map((f) => f.id),
-          createdAt: Date.now(),
-        };
-        set((s) => ({ crews: [...s.crews, crew], activeCrewId: crew.id }));
-        return crew;
+      loadCrews: async () => {
+        try {
+          const crews = await cloud.getCrews();
+          const memberLists = await Promise.all(crews.map((c) => cloud.getCrewMembers(c.id)));
+          const members = Object.fromEntries(crews.map((c, i) => [c.id, memberLists[i]]));
+          set((s) => ({
+            crews,
+            members,
+            crewsLoaded: true,
+            activeCrewId: crews.some((c) => c.id === s.activeCrewId) ? s.activeCrewId : crews[0]?.id ?? null,
+          }));
+        } catch (e) {
+          console.error("Crews laden fehlgeschlagen:", e);
+          set({ crewsLoaded: true });
+          toast(translate("crew_errLoad"), undefined, "error");
+        }
+      },
+
+      resetCloud: () => set({ crews: [], members: {}, crewsLoaded: false, activeCrewId: null }),
+
+      createCrew: async (name) => {
+        try {
+          const crew = await cloud.createCrew(name);
+          await get().loadCrews();
+          set({ activeCrewId: crew.id });
+          toast(translate("crew_createdToast", { name: crew.name }));
+          return crew;
+        } catch (e) {
+          console.error("Crew erstellen fehlgeschlagen:", e);
+          toast(translate("crew_errCreate"), undefined, "error");
+          return null;
+        }
+      },
+
+      joinCrew: async (code) => {
+        const result = await cloud.joinCrew(code);
+        if (result.ok) {
+          await get().loadCrews();
+          set({ activeCrewId: result.crewId });
+          toast(translate("crew_joinedToast"));
+        }
+        return result;
+      },
+
+      leaveCrew: async (crewId) => {
+        try {
+          await cloud.leaveCrew(crewId);
+          await get().loadCrews();
+          toast(translate("crew_leftToast"));
+          return true;
+        } catch (e) {
+          console.error("Crew verlassen fehlgeschlagen:", e);
+          toast(translate("crew_errLeave"), undefined, "error");
+          return false;
+        }
       },
 
       setActiveCrew: (activeCrewId) => set({ activeCrewId }),
@@ -126,7 +181,8 @@ export const useCrewStore = create<CrewState>()(
         return post.id;
       },
 
-      clearAll: () => set({ crews: [], activeCrewId: null, posts: [] }),
+      // Crews liegen in der Cloud und bleiben unberührt; gelöscht werden nur die lokalen Posts
+      clearAll: () => set({ posts: [] }),
 
       togglePublic: (postId) => {
         const post = get().posts.find((p) => p.id === postId);
@@ -161,18 +217,15 @@ export const useCrewStore = create<CrewState>()(
     }),
     {
       name: STORAGE.crew,
-      version: 2,
-      // v2: neue Seed-Posts mit echten Kleidungsfotos und eine vierte Person (Ava) in der Crew
+      version: 3,
+      // v2: neue Seed-Posts mit echten Kleidungsfotos; v3: Crews kommen aus Supabase (alte lokale Crews verwerfen)
       migrate: (persisted, version) => {
-        const s = persisted as { crews?: Crew[]; posts?: FitPost[]; activeCrewId?: string | null };
-        if (version >= 2) return s as unknown as CrewState;
-        return {
-          ...s,
-          crews: (s.crews ?? SEED_CREWS).map((c) => (c.id === "crew-main" ? { ...c, memberIds: SEED_CREWS[0].memberIds } : c)),
-          posts: [...(s.posts ?? []).filter((p) => !p.id.startsWith("seed-")), ...SEED_POSTS],
-        } as unknown as CrewState;
+        const s = persisted as { posts?: FitPost[] };
+        const posts =
+          version < 2 ? [...(s.posts ?? []).filter((p) => !p.id.startsWith("seed-")), ...SEED_POSTS] : s.posts ?? SEED_POSTS;
+        return { posts, activeCrewId: null } as unknown as CrewState;
       },
-      partialize: (s) => ({ crews: s.crews, activeCrewId: s.activeCrewId, posts: s.posts }),
+      partialize: (s) => ({ activeCrewId: s.activeCrewId, posts: s.posts }),
     },
   ),
 );

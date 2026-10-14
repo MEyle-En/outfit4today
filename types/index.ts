@@ -156,6 +156,9 @@ export interface Crew {
   id: string;
   name: string;
   inviteCode: string;
+  /** Ersteller (Supabase-User-ID) */
+  ownerId?: string;
+  /** Supabase-User-IDs der Mitglieder */
   memberIds: string[];
   createdAt: number;
 }

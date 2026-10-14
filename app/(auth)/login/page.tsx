@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/hooks/useTranslation";
 import Link from "next/link";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
+import { getPendingJoin } from "@/lib/utils/pendingJoin";
 import { MIN_PASSWORD, useAuthStore } from "@/lib/store/useAuthStore";
 import { toast } from "@/lib/store/useToastStore";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const loginWithApple = useAuthStore((s) => s.loginWithApple);
   const [busy, setBusy] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [pendingJoin, setPendingJoinState] = useState(false);
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -75,9 +77,14 @@ export default function LoginPage() {
 
   // Rückkehr vom Anbieter mit Fehler (z. B. Google in Supabase nicht aktiviert / abgebrochen): Meldung zeigen
   useEffect(() => {
+    setPendingJoinState(!!getPendingJoin()); // Einladungslink geöffnet -> Hinweis zeigen
     const params = new URLSearchParams(window.location.search + "&" + window.location.hash.replace(/^#/, ""));
     if (params.get("error") || params.get("error_description")) {
-      setAuthError(t("auth_errGoogle"));
+      let provider = "google";
+      try {
+        provider = sessionStorage.getItem("oauth-provider") ?? "google";
+      } catch {}
+      setAuthError(t(provider === "apple" ? "auth_errApple" : "auth_errGoogle"));
       window.history.replaceState(null, "", window.location.pathname);
     }
     // Zurück-Taste vom Anbieter: Button wieder freigeben
@@ -91,11 +98,14 @@ export default function LoginPage() {
     if (busy) return;
     setAuthError(null);
     setBusy(true);
+    try {
+      sessionStorage.setItem("oauth-provider", provider); // für die Fehlermeldung nach der Rückkehr
+    } catch {}
     // Bei Erfolg wechselt der Browser zum Anbieter und kehrt danach zurück
     const result = await (provider === "google" ? loginWithGoogle() : loginWithApple());
     if (!result.ok) {
       setBusy(false);
-      setAuthError(t(provider === "google" ? "auth_errGoogle" : "auth_errProvider"));
+      setAuthError(t(provider === "google" ? "auth_errGoogle" : "auth_errApple"));
     }
   };
 
@@ -178,6 +188,11 @@ export default function LoginPage() {
             Outfit<span className="text-accent-soft">4</span>Today
           </h1>
           <p className="max-w-xs text-sm text-zinc-400">{t("auth_tagline")}</p>
+          {pendingJoin && (
+            <p role="status" className="max-w-xs rounded-xl bg-accent/15 px-3 py-2 text-sm text-zinc-100">
+              {t("crew_joinLoginHint")}
+            </p>
+          )}
         </div>
 
         <form onSubmit={submit} noValidate className="space-y-5">
