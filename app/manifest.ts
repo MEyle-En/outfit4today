@@ -2,8 +2,12 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Outfit4Today",
-    short_name: "Outfit4Today",
+    short_name: "Outfit4",
+    lang: "de",
+    scope: "/",
+    categories: ["lifestyle", "fashion"],
     description: "Digital Wardrobe & AI Stylist – dein Kleiderschrank ohne Tipparbeit.",
     start_url: "/",
     display: "standalone",

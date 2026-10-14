@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Caveat, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { Toaster } from "@/components/ui/Toaster";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -17,6 +18,8 @@ export const metadata: Metadata = {
   title: { default: "Outfit4Today – Digital Wardrobe & AI Stylist", template: "%s · Outfit4Today" },
   description: "Outfit4Today: dein digitaler Kleiderschrank mit AI Stylist – ohne Tipparbeit.",
   appleWebApp: { capable: true, title: "Outfit4Today", statusBarStyle: "black-translucent" },
+  other: { "mobile-web-app-capable": "yes" },
+  formatDetection: { telephone: false },
   openGraph: {
     title: "Outfit4Today",
     description: "Digital Wardrobe & AI Stylist",
@@ -49,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthGuard>{children}</AuthGuard>
         </div>
         <Toaster />
+        <PwaRegister />
       </body>
     </html>
   );
