@@ -29,6 +29,8 @@ export interface ChatThread extends ThreadMeta {
 interface ChatState {
   threads: ChatThread[];
   sendMessage: (meta: ThreadMeta, text: string) => void;
+  /** Eigene Nachricht entfernen (der Chat liegt noch lokal im Browser) */
+  deleteMessage: (threadId: string, messageId: string) => void;
   receiveMessage: (meta: ThreadMeta, text: string) => void;
   clearAll: () => void;
 }
@@ -52,6 +54,13 @@ export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
       threads: [],
+      deleteMessage: (threadId, messageId) =>
+        set((s) => ({
+          threads: s.threads.map((t) =>
+            // nur eigene Nachrichten ("me") lassen sich löschen
+            t.id === threadId ? { ...t, messages: t.messages.filter((m) => !(m.id === messageId && m.from === "me")) } : t,
+          ),
+        })),
       sendMessage: (meta, text) => {
         set((s) => ({ threads: append(s.threads, meta, { from: "me", text }) }));
         // Mock: Gegenüber antwortet nach kurzer Zeit

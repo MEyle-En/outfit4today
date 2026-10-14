@@ -243,13 +243,15 @@ export async function createPost(input: {
 
 /** Nur eigene Posts (RLS lässt fremde nicht zu). */
 export async function deletePost(postId: string): Promise<void> {
-  const { error } = await supabase.from("fit_posts").delete().eq("id", postId);
+  const { data, error } = await supabase.from("fit_posts").delete().eq("id", postId).select("id");
   if (error) throw error;
+  if (!data?.length) throw new Error("Post wurde nicht gelöscht (nicht gefunden oder keine Berechtigung)");
 }
 
 export async function setPostPublic(postId: string, isPublic: boolean): Promise<void> {
-  const { error } = await supabase.from("fit_posts").update({ is_public: isPublic }).eq("id", postId);
+  const { data, error } = await supabase.from("fit_posts").update({ is_public: isPublic }).eq("id", postId).select("id");
   if (error) throw error;
+  if (!data?.length) throw new Error("Post wurde nicht geändert (nicht gefunden oder keine Berechtigung)");
 }
 
 // ---------- Kommentare
@@ -271,8 +273,9 @@ export async function addComment(postId: string, text: string): Promise<FitComme
 
 /** Nur eigene Kommentare (RLS erlaubt zusätzlich dem Post-Autor das Entfernen). */
 export async function deleteComment(commentId: string): Promise<void> {
-  const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
+  const { data, error } = await supabase.from("post_comments").delete().eq("id", commentId).select("id");
   if (error) throw error;
+  if (!data?.length) throw new Error("Kommentar wurde nicht gelöscht (nicht gefunden oder keine Berechtigung)");
 }
 
 export async function addSwapComment(postId: string, input: { text: string; swap: SwapSuggestion }): Promise<FitComment> {

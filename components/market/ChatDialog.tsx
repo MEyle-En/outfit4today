@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/hooks/useTranslation";
+import { toast } from "@/lib/store/useToastStore";
 import { useChatStore, type ThreadMeta } from "@/lib/store/useChatStore";
 import { useProfileStore } from "@/lib/store/useProfileStore";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,9 @@ export function ChatDialog({
   const thread = useChatStore((s) => s.threads.find((x) => x.id === meta.id));
   const sendMessage = useChatStore((s) => s.sendMessage);
   const avatar = useProfileStore((s) => s.avatar);
+  const deleteMessage = useChatStore((s) => s.deleteMessage);
   const [text, setText] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const messages = thread?.messages ?? [];
   const QUICK = [t("chat_q1"), t("chat_q2"), t("chat_q3")];
@@ -69,6 +72,30 @@ export function ChatDialog({
               >
                 {m.text}
               </div>
+              {/* Nur eigene Nachrichten: zweiter Tipp bestätigt */}
+              {m.from === "me" && (
+                <button
+                  type="button"
+                  aria-label={t("chat_delete")}
+                  title={t("chat_delete")}
+                  onClick={() => {
+                    if (confirmId !== m.id) {
+                      setConfirmId(m.id);
+                      setTimeout(() => setConfirmId((cur) => (cur === m.id ? null : cur)), 3000);
+                      return;
+                    }
+                    setConfirmId(null);
+                    deleteMessage(meta.id, m.id);
+                    toast(t("chat_deletedToast"));
+                  }}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1 rounded-full p-1.5 text-[11px]",
+                    confirmId === m.id ? "bg-red-500/15 px-2.5 text-red-300" : "bg-white/5 text-zinc-300 hover:text-white",
+                  )}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> {confirmId === m.id && t("comment_deleteConfirm")}
+                </button>
+              )}
             </div>
           ))}
           <div ref={endRef} />

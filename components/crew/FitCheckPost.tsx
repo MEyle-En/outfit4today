@@ -226,8 +226,8 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
                     void deleteComment(post.id, c.id);
                   }}
                   className={cn(
-                    "flex shrink-0 items-center gap-1 rounded-full p-1 text-[11px]",
-                    confirmCommentId === c.id ? "bg-red-500/15 px-2 text-red-300" : "text-zinc-600 hover:text-white",
+                    "flex shrink-0 items-center gap-1 rounded-full p-1.5 text-[11px]",
+                    confirmCommentId === c.id ? "bg-red-500/15 px-2.5 text-red-300" : "bg-white/5 text-zinc-300 hover:text-white",
                   )}
                 >
                   <Trash2 className="h-3.5 w-3.5" /> {confirmCommentId === c.id && t("comment_deleteConfirm")}
