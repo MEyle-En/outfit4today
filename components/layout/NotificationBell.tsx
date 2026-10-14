@@ -28,12 +28,20 @@ export function NotificationBell({ className }: { className?: string }) {
   const markAllRead = useNotificationStore((s) => s.markAllRead);
   const clear = useNotificationStore((s) => s.clear);
   const [open, setOpen] = useState(false);
+  // Beim Öffnen: Zähler sofort auf 0, die gerade neuen Einträge bleiben in der Liste noch hervorgehoben
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
   const unread = items.filter((n) => !n.read).length;
+
+  const openPanel = () => {
+    setFresh(new Set(items.filter((n) => !n.read).map((n) => n.id)));
+    markAllRead();
+    setOpen(true);
+  };
 
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={openPanel}
         aria-label={`${t("notifications")}${unread ? ` (${unread})` : ""}`}
         className={cn("icon-btn glass relative grid h-10 w-10 place-items-center rounded-full", className)}
       >
@@ -49,7 +57,7 @@ export function NotificationBell({ className }: { className?: string }) {
         open={open}
         onOpenChange={(o) => {
           setOpen(o);
-          if (!o) markAllRead(); // Ungelesen-Markierung bleibt sichtbar, solange die Liste offen ist
+          if (!o) markAllRead(); // während des Öffnens eingetroffene Einträge ebenfalls als gelesen
         }}
       >
         <DialogContent>
@@ -72,7 +80,7 @@ export function NotificationBell({ className }: { className?: string }) {
                     }}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-2xl border p-3 text-left",
-                      n.read ? "border-white/10 bg-white/5" : "border-accent/40 bg-accent/10",
+                      fresh.has(n.id) ? "border-accent/40 bg-accent/10" : "border-white/10 bg-white/5",
                     )}
                   >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent/20 text-accent-soft">

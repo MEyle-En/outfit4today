@@ -8,6 +8,7 @@ import { warmupBackgroundRemoval } from "@/lib/utils/backgroundRemover";
 import { translate } from "@/lib/i18n/translate";
 import { toast } from "@/lib/store/useToastStore";
 import { clearPendingJoin, getPendingJoin } from "@/lib/utils/pendingJoin";
+import { ensureProfile } from "@/lib/supabase-social";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
 import { useAuthStore } from "@/lib/store/useAuthStore";
@@ -73,9 +74,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    void useCrewStore
-      .getState()
-      .loadCrews()
+    const me = useAuthStore.getState().user;
+    // Erst das Profil sicherstellen (sonst fehlen Namen in Mitglieder- und Post-Listen), dann Crews laden
+    void (me ? ensureProfile(me) : Promise.resolve())
+      .then(() => useCrewStore.getState().loadCrews())
       .then(async () => {
         // Einladungslink vor dem Login geöffnet? Genau einmal beitreten, Eintrag sofort löschen (kein Re-Join bei Reload)
         const code = getPendingJoin();

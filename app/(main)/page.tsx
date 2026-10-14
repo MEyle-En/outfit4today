@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowRight, ShoppingBag } from "lucide-react";
 import { TodayItem } from "@/components/home/TodayItem";
 import { Logo } from "@/components/brand/Logo";
-import { NotificationBell } from "@/components/layout/NotificationBell";
 import { MarketCard } from "@/components/market/MarketCard";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useVibeTheme } from "@/hooks/useVibeTheme";
@@ -47,7 +46,6 @@ export default function HomePage() {
         )}
         <div className="relative mb-5 flex items-center justify-between">
           <Logo />
-          <NotificationBell />
         </div>
         <p className="text-sm text-zinc-500">{t("homeGreeting")}</p>
         {theme.headerText ? (

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
+import { ExampleBadge } from "@/components/ui/ExampleBadge";
+import { isDemoItem } from "@/lib/demo";
 import { useDraggable } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Shirt } from "lucide-react";
@@ -23,6 +25,7 @@ export function TrayThumb({ item, dragging }: { item: WardrobeItem; dragging?: b
       )}
     >
       <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} draggable={false} className="pointer-events-none h-full w-full" />
+      {isDemoItem(item) && <ExampleBadge className="absolute left-1 top-1 px-1.5 text-[8px]" />}
       <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-4 text-[10px] font-medium">
         {item.name}
       </span>

@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Camera, FileText, Heart, LogOut, Shield, RotateCcw, Shirt, Sparkles, Trash2, User, Volume2, VolumeX } from "lucide-react";
 import { ImageCropper } from "@/components/profile/ImageCropper";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
-import { NotificationBell } from "@/components/layout/NotificationBell";
 import { MyListings } from "@/components/market/MyListings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useBundleStore } from "@/lib/store/useBundleStore";
 import { useChatStore } from "@/lib/store/useChatStore";
 import { useCrewStore } from "@/lib/store/useCrewStore";
+import { getMyStats } from "@/lib/supabase-social";
 import { useLabStore } from "@/lib/store/useLabStore";
 import { useNotificationStore } from "@/lib/store/useNotificationStore";
 import { usePreferencesStore } from "@/lib/store/usePreferencesStore";
@@ -74,7 +74,23 @@ export default function ProfilePage() {
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const myFits = posts.filter((p) => p.authorId === "me").sort((a, b) => b.createdAt - a.createdAt);
+  const myId = useAuthStore((s) => s.user?.id);
+  const loadPosts = useCrewStore((s) => s.loadPosts);
+  useEffect(() => {
+    void loadPosts("mine");
+  }, [loadPosts]);
+  const myFits = posts.filter((p) => p.authorId === myId).sort((a, b) => b.createdAt - a.createdAt);
+  // Zahlen direkt aus der Cloud (crew_members / fit_posts); neu laden, wenn sich Crews oder Posts ändern
+  const [cloudStats, setCloudStats] = useState<{ crews: number; fits: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getMyStats()
+      .then((s) => !cancelled && setCloudStats(s))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [crews.length, myFits.length, myId]);
   const vibeLabels = vibes.map((id) => QUIZ_STEPS[0].options.find((o) => o.id === id)?.label ?? id);
 
   // Farbverlauf aus den im Vibe Check gewählten Paletten (Style-Badge im Header)
@@ -92,8 +108,8 @@ export default function ProfilePage() {
 
   const stats = [
     { label: t("profile_items"), value: items.length },
-    { label: t("profile_crews"), value: crews.length },
-    { label: t("profile_fitsShared"), value: myFits.length },
+    { label: t("profile_crews"), value: cloudStats?.crews ?? crews.length },
+    { label: t("profile_fitsShared"), value: cloudStats?.fits ?? myFits.length },
   ];
 
   // Gewähltes Foto nicht sofort übernehmen, sondern erst im Cropper zuschneiden lassen
@@ -140,7 +156,6 @@ export default function ProfilePage() {
     <div className="space-y-6">
       {/* Header */}
       <header className="relative flex flex-col items-center text-center">
-        <NotificationBell className="absolute right-0 top-0" />
 
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void onAvatar(e.target.files?.[0])} />
         <button

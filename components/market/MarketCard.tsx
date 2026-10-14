@@ -5,6 +5,7 @@ import { ArrowLeftRight, MessageCircle } from "lucide-react";
 import { ChatDialog } from "@/components/market/ChatDialog";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { ItemImage } from "@/components/wardrobe/ItemImage";
+import { ExampleBadge } from "@/components/ui/ExampleBadge";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel } from "@/lib/categories";
 import { swatchOf } from "@/lib/colors";
@@ -50,6 +51,7 @@ export function MarketCard({
           <ItemImage src={listing.image} alt={listing.name} transparent={listing.transparent} loading="lazy" className="h-full w-full" />
         )}
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+          {listing.demo && <ExampleBadge />}
           {canBuy && (
             <span className="rounded-full bg-black/70 px-2.5 py-1 text-sm font-bold text-white backdrop-blur-md">
               💰 {listing.price != null ? `${listing.price} €` : t("price_vb")}

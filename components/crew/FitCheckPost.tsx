@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ItemImage } from "@/components/wardrobe/ItemImage";
-import { ArrowLeftRight, Bookmark, Globe, MessageCircle, Send } from "lucide-react";
+import { ArrowLeftRight, Bookmark, Globe, MessageCircle, Send, Trash2 } from "lucide-react";
 import { FitPreview } from "@/components/crew/FitPreview";
 import { SwapDialog } from "@/components/crew/SwapDialog";
 import { Badge } from "@/components/ui/badge";
@@ -16,23 +16,23 @@ import { useProfileStore } from "@/lib/store/useProfileStore";
 import { stagger } from "@/lib/stagger";
 import { likeKey } from "@/lib/store/useSocialStore";
 import { useItemLookup } from "@/hooks/useItemLookup";
-import { getPerson } from "@/lib/mock/crew";
+import { gradientFor } from "@/lib/supabase-crews";
+import { useAuthStore } from "@/lib/store/useAuthStore";
+import { useAuthorsStore } from "@/lib/store/useAuthorsStore";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { cn, timeAgo } from "@/lib/utils";
 import type { FitComment, FitPost } from "@/types";
 
 function Avatar({ id, size = "h-9 w-9" }: { id: string; size?: string }) {
-  const avatar = useProfileStore((s) => s.avatar);
-  if (id === "me" && avatar) {
+  const myAvatar = useProfileStore((s) => s.avatar);
+  const meId = useAuthStore((s) => s.user?.id);
+  const profile = useAuthorsStore((s) => s.profiles[id]);
+  const src = id === meId && myAvatar ? myAvatar : profile?.avatar;
+  if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avatar} alt="" className={cn("shrink-0 rounded-full object-cover", size)} />;
+    return <img src={src} alt="" className={cn("shrink-0 rounded-full object-cover", size)} />;
   }
-  const person = getPerson(id);
-  if (person.avatar) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={person.avatar} alt={person.name} className={cn("shrink-0 rounded-full object-cover", size)} />;
-  }
-  return <div className={cn("shrink-0 rounded-full bg-gradient-to-br", person.gradient, size)} />;
+  return <div className={cn("shrink-0 rounded-full bg-gradient-to-br", gradientFor(id), size)} />;
 }
 
 function SwapCard({ comment }: { comment: FitComment }) {
@@ -60,13 +60,13 @@ function SwapCard({ comment }: { comment: FitComment }) {
       </div>
       <div className="flex items-center gap-3">
         <div className="text-center">
-          {thumb(offered?.image, s.offeredName, offered?.hasTransparentBackground)}
+          {thumb(s.offeredImage ?? offered?.image, s.offeredName, s.offeredTransparent ?? offered?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.offeredName}</p>
           {offered?.size && <p className="text-[10px] font-semibold text-accent-soft">{offered.size}</p>}
         </div>
         <ArrowLeftRight className="h-4 w-4 shrink-0 text-accent-soft" />
         <div className="text-center">
-          {thumb(target?.image, s.targetName, target?.hasTransparentBackground)}
+          {thumb(s.targetImage ?? target?.image, s.targetName, s.targetTransparent ?? target?.hasTransparentBackground)}
           <p className="mt-1 w-14 truncate text-[10px] text-zinc-400">{s.targetName}</p>
           {target?.size && <p className="text-[10px] font-semibold text-accent-soft">{target.size}</p>}
         </div>
@@ -80,12 +80,16 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
   const { t } = useTranslation();
   const nameOf = usePersonName();
   const lookupItem = useItemLookup();
-  const { toggleReaction, addComment, togglePublic } = useCrewStore.getState();
+  const { toggleReaction, addComment, togglePublic, deletePost, deleteComment } = useCrewStore.getState();
+  const [confirmCommentId, setConfirmCommentId] = useState<string | null>(null);
+  const meId = useAuthStore((s) => s.user?.id);
   const [swapOpen, setSwapOpen] = useState(false);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const commentRef = useRef<HTMLInputElement>(null);
-  const isMine = post.authorId === "me";
-  const inspired = post.reactions.idea.includes("me");
+  const isMine = !!meId && post.authorId === meId;
+  const inspired = !!meId && post.reactions.idea.includes(meId);
 
   return (
     <article style={stagger(index)} className="animate-fade-in-up card-lift space-y-3 rounded-2xl border border-white/10 bg-surface p-3">
@@ -95,9 +99,9 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
           <p className="truncate text-sm font-semibold">{nameOf(post.authorId)}</p>
           <p className="text-xs text-zinc-500">{t("post_fitCheck")} · {timeAgo(post.createdAt)}</p>
         </div>
-        {isMine ? (
+        {isMine && post.crewId !== null ? (
           <button
-            onClick={() => togglePublic(post.id)}
+            onClick={() => void togglePublic(post.id)}
             aria-pressed={!!post.isPublic}
             title={t("post_publicToggle")}
             className={cn(
@@ -113,6 +117,28 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
               <Globe className="h-3 w-3" /> {t("post_public")}
             </Badge>
           )
+        )}
+        {/* Nur eigene Posts lassen sich löschen (die Datenbank erzwingt das zusätzlich) */}
+        {isMine && (
+          <button
+            type="button"
+            aria-label={t("post_delete")}
+            title={t("post_delete")}
+            onClick={() => {
+              if (!confirmDelete) {
+                setConfirmDelete(true);
+                setTimeout(() => setConfirmDelete(false), 3000);
+                return;
+              }
+              void deletePost(post.id);
+            }}
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px]",
+              confirmDelete ? "border-red-400/60 text-red-300" : "border-white/10 text-zinc-500 hover:text-white",
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> {confirmDelete && t("post_deleteConfirm")}
+          </button>
         )}
       </header>
 
@@ -139,7 +165,7 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
         <Tip label={t("inspired_tooltip")}>
           <button
             type="button"
-            onClick={() => toggleReaction(post.id, "idea")}
+            onClick={() => void toggleReaction(post.id, "idea")}
             aria-pressed={inspired}
             aria-label={t("inspired_tooltip")}
             className={cn(
@@ -174,13 +200,38 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
       {post.comments.length > 0 && (
         <ul className="space-y-2">
           {post.comments.map((c) => (
-            <li key={c.id}>
-              {c.kind === "swap" && c.swap ? (
-                <SwapCard comment={c} />
-              ) : (
-                <p className="text-sm text-zinc-300">
-                  <span className="font-semibold text-white">{nameOf(c.authorId)}</span> {c.text}
-                </p>
+            <li key={c.id} className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                {c.kind === "swap" && c.swap ? (
+                  <SwapCard comment={c} />
+                ) : (
+                  <p className="text-sm text-zinc-300">
+                    <span className="font-semibold text-white">{nameOf(c.authorId)}</span> {c.text}
+                  </p>
+                )}
+              </div>
+              {/* Nur eigene Kommentare: zweiter Tipp bestätigt (die Datenbank erzwingt das zusätzlich) */}
+              {!!meId && c.authorId === meId && (
+                <button
+                  type="button"
+                  aria-label={t("comment_delete")}
+                  title={t("comment_delete")}
+                  onClick={() => {
+                    if (confirmCommentId !== c.id) {
+                      setConfirmCommentId(c.id);
+                      setTimeout(() => setConfirmCommentId((cur) => (cur === c.id ? null : cur)), 3000);
+                      return;
+                    }
+                    setConfirmCommentId(null);
+                    void deleteComment(post.id, c.id);
+                  }}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1 rounded-full p-1 text-[11px]",
+                    confirmCommentId === c.id ? "bg-red-500/15 px-2 text-red-300" : "text-zinc-600 hover:text-white",
+                  )}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> {confirmCommentId === c.id && t("comment_deleteConfirm")}
+                </button>
               )}
             </li>
           ))}
@@ -189,11 +240,13 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
 
       <form
         className="flex gap-2"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (!text.trim()) return;
-          addComment(post.id, { authorId: "me", kind: "comment", text: text.trim() });
-          setText("");
+          if (!text.trim() || sending) return;
+          setSending(true);
+          const ok = await addComment(post.id, { kind: "comment", text: text.trim() });
+          setSending(false);
+          if (ok) setText(""); // bei Fehler bleibt der Text stehen
         }}
       >
         <Input
@@ -204,7 +257,7 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
           aria-label={t("post_comment")}
           className="h-10 text-sm"
         />
-        <Button type="submit" size="icon" variant="glass" disabled={!text.trim()} aria-label={t("send")}>
+        <Button type="submit" size="icon" variant="glass" disabled={!text.trim() || sending} aria-label={t("send")}>
           <Send className="h-4 w-4" />
         </Button>
       </form>

@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryBadge } from "@/components/wardrobe/CategoryBadge";
 import { EditItemDialog } from "@/components/wardrobe/EditItemDialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import { ExampleBadge } from "@/components/ui/ExampleBadge";
+import { isDemoItem } from "@/lib/demo";
 import { stagger } from "@/lib/stagger";
 import { toast } from "@/lib/store/useToastStore";
 import { cn } from "@/lib/utils";
@@ -54,11 +56,7 @@ export function ItemCard({
         >
           <Trash2 className="h-4 w-4" />
         </button>
-        {item.isPlaceholder && (
-          <span className="rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-zinc-300 backdrop-blur-md">
-            {t("item_placeholder")}
-          </span>
-        )}
+        {isDemoItem(item) && <ExampleBadge />}
       </div>
 
       {/* Aktionen rechts: Sichtbarkeit, Bearbeiten, Verkaufen */}

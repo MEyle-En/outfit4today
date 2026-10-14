@@ -9,6 +9,7 @@ import { translate } from "@/lib/i18n/translate";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PickTile } from "@/components/wardrobe/PickTile";
 import { useItemLookup } from "@/hooks/useItemLookup";
+import { snapshotImage } from "@/lib/supabase-social";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import type { FitPost } from "@/types";
@@ -51,19 +52,27 @@ export function SwapDialog({
     setMsg("");
   };
 
-  const submit = () => {
-    if (!target || !offered) return;
-    addComment(post.id, {
-      authorId: "me",
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!target || !offered || busy) return;
+    setBusy(true);
+    const ok = await addComment(post.id, {
       kind: "swap",
       text: msg.trim() || TEMPLATES.better(offered.name),
       swap: {
         offeredItemId: offered.id,
         offeredName: offered.name,
+        offeredImage: snapshotImage(offered.image),
+        offeredTransparent: offered.hasTransparentBackground,
         targetItemId: target.itemId,
         targetName: target.name,
+        targetImage: snapshotImage(target.imageUrl),
+        targetTransparent: target.hasTransparentBackground,
       },
     });
+    setBusy(false);
+    if (!ok) return;
     reset();
     onOpenChange(false);
   };
@@ -81,8 +90,8 @@ export function SwapDialog({
               {post.layers.map((l) => (
                 <PickTile
                   key={l.itemId}
-                  image={lookup(l.itemId)?.image}
-                  transparent={lookup(l.itemId)?.hasTransparentBackground}
+                  image={l.imageUrl ?? lookup(l.itemId)?.image}
+                  transparent={l.hasTransparentBackground ?? lookup(l.itemId)?.hasTransparentBackground}
                   name={l.name}
                   selected={targetId === l.itemId}
                   onClick={() => setTargetId(l.itemId)}
@@ -129,7 +138,7 @@ export function SwapDialog({
             <Input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder={t("swap_messagePh")} aria-label={t("swap_message")} />
           </section>
 
-          <Button size="lg" className="w-full" disabled={!offered || !target} onClick={submit}>
+          <Button size="lg" className="w-full" disabled={!offered || !target || busy} onClick={() => void submit()}>
             <ArrowLeftRight className="h-5 w-5" /> {t("swap_send")}
           </Button>
         </div>

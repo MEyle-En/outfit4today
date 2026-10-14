@@ -1,17 +1,19 @@
 import { STORAGE } from "@/lib/storage-keys";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { FRIEND_ITEMS, SEED_POSTS } from "@/lib/mock/crew";
-import * as cloud from "@/lib/supabase-crews";
-import { toast } from "@/lib/store/useToastStore";
 import { translate } from "@/lib/i18n/translate";
-import { uid } from "@/lib/mock/wardrobe";
-import { notify } from "@/lib/store/useNotificationStore";
-import { likeKey, useSocialStore } from "@/lib/store/useSocialStore";
-import type { Crew, FitComment, FitLayer, FitPost, Person, ReactionType } from "@/types";
+import * as cloud from "@/lib/supabase-crews";
+import * as social from "@/lib/supabase-social";
+import { useAuthStore } from "@/lib/store/useAuthStore";
+import { useAuthorsStore } from "@/lib/store/useAuthorsStore";
+import { useSocialStore } from "@/lib/store/useSocialStore";
+import { toast } from "@/lib/store/useToastStore";
+import type { Crew, FitComment, FitLayer, FitPost, Person, ReactionType, SwapSuggestion } from "@/types";
 
 type WardrobeView = "mine" | "crew";
 export type CrewTab = "fits" | "items" | "public";
+
+export type SendFitResult = { ok: true; id: string } | { ok: false; error: "pendingUpload" | "failed" };
 
 interface CrewState {
   /** Aus Supabase geladen (nicht lokal gespeichert) */
@@ -21,7 +23,9 @@ interface CrewState {
   /** true, sobald die Crews einmal geladen wurden (verhindert kurzes Aufblitzen des Leerzustands) */
   crewsLoaded: boolean;
   activeCrewId: string | null;
+  /** Posts aus Supabase (Crew-, öffentliche und eigene), nicht lokal gespeichert */
   posts: FitPost[];
+  postsLoading: boolean;
   /** UI-Zustand (nicht persistiert): welcher Wardrobe-Tab / Crew-Unterbereich ist offen */
   wardrobeView: WardrobeView;
   crewTab: CrewTab;
@@ -34,28 +38,41 @@ interface CrewState {
   joinCrew: (code: string) => Promise<cloud.JoinResult>;
   leaveCrew: (crewId: string) => Promise<boolean>;
   setActiveCrew: (id: string) => void;
+  /** Posts einer Crew-ID, die öffentlichen ("public") oder meine ("mine") laden */
+  loadPosts: (scope: social.PostScope) => Promise<void>;
   /** crewId = null: Fit wird nur öffentlich gepostet (Public Inspo), ohne Crew */
-  sendFit: (input: { crewId: string | null; layers: FitLayer[]; caption: string; isPublic?: boolean }) => string;
-  togglePublic: (postId: string) => void;
-  toggleReaction: (postId: string, type: ReactionType, userId?: string) => void;
-  addComment: (postId: string, c: Omit<FitComment, "id" | "createdAt">) => void;
+  sendFit: (input: { crewId: string | null; layers: FitLayer[]; caption: string; isPublic?: boolean }) => Promise<SendFitResult>;
+  deletePost: (postId: string) => Promise<void>;
+  togglePublic: (postId: string) => Promise<void>;
+  toggleReaction: (postId: string, type: ReactionType) => Promise<void>;
+  /** Eigenen Kommentar löschen (optimistisch, mit Rollback) */
+  deleteComment: (postId: string, commentId: string) => Promise<void>;
+  addComment: (
+    postId: string,
+    c: { kind: "comment"; text: string } | { kind: "swap"; text: string; swap: SwapSuggestion },
+  ) => Promise<boolean>;
   clearAll: () => void;
 }
 
+const meId = () => useAuthStore.getState().user?.id;
 
-/** Mock: andere liken meinen öffentlichen Fit (zeitversetzt) und lösen Benachrichtigungen aus. */
-function simulatePublicLikes(postId: string, isStillPublic: () => boolean) {
-  [
-    [4000, "Jonas"],
-    [9000, "Lea"],
-  ].forEach(([delay, name]) => {
-    setTimeout(() => {
-      if (!isStillPublic()) return;
-      useSocialStore.getState().addBonus(likeKey.post(postId), 1);
-      notify("like", translate("notif_like", { name: String(name) }), "/wardrobe");
-    }, delay as number);
-  });
+const patchPost = (posts: FitPost[], id: string, fn: (p: FitPost) => FitPost) => posts.map((p) => (p.id === id ? fn(p) : p));
+
+/** Ersetzt die Posts des geladenen Bereichs durch den frischen Stand, andere Bereiche bleiben. */
+function mergePosts(existing: FitPost[], incoming: FitPost[], scope: social.PostScope): FitPost[] {
+  const me = meId();
+  const inScope = (p: FitPost) => (scope === "public" ? !!p.isPublic : scope === "mine" ? p.authorId === me : p.crewId === scope);
+  const kept = existing.filter((p) => !inScope(p) && !incoming.some((i) => i.id === p.id));
+  return [...kept, ...incoming].sort((a, b) => b.createdAt - a.createdAt);
 }
+
+let lastErrorToast = 0;
+const failToast = (key: Parameters<typeof translate>[0]) => {
+  const now = Date.now();
+  if (now - lastErrorToast < 4000) return;
+  lastErrorToast = now;
+  toast(translate(key), undefined, "error");
+};
 
 export const useCrewStore = create<CrewState>()(
   persist(
@@ -64,7 +81,8 @@ export const useCrewStore = create<CrewState>()(
       members: {},
       crewsLoaded: false,
       activeCrewId: null,
-      posts: SEED_POSTS,
+      posts: [],
+      postsLoading: false,
       wardrobeView: "mine",
       crewTab: "fits",
       setWardrobeView: (wardrobeView) => set({ wardrobeView }),
@@ -88,7 +106,7 @@ export const useCrewStore = create<CrewState>()(
         }
       },
 
-      resetCloud: () => set({ crews: [], members: {}, crewsLoaded: false, activeCrewId: null }),
+      resetCloud: () => set({ crews: [], members: {}, crewsLoaded: false, activeCrewId: null, posts: [], postsLoading: false }),
 
       createCrew: async (name) => {
         try {
@@ -129,103 +147,118 @@ export const useCrewStore = create<CrewState>()(
 
       setActiveCrew: (activeCrewId) => set({ activeCrewId }),
 
-      sendFit: ({ crewId, layers, caption, isPublic }) => {
-        const post: FitPost = {
-          id: uid(),
-          crewId,
-          authorId: "me",
-          caption: caption.trim(),
-          isPublic: crewId === null ? true : !!isPublic, // ohne Crew bleibt nur "öffentlich"
-          layers,
-          reactions: { fire: [], idea: [], want: [] },
-          comments: [],
-          createdAt: Date.now(),
-        };
-        set((s) => ({ posts: [post, ...s.posts] }));
-
-        // Asynchrones Verhalten simulieren (Mock): Reaktion, Tauschvorschlag, Likes
-        setTimeout(() => {
-          get().addComment(post.id, { authorId: "f-mila", kind: "comment", text: translate("reply_comment") });
-          notify("comment", translate("notif_comment", { name: "Mila" }), "/wardrobe");
-        }, 4500);
-        setTimeout(() => {
-          get().toggleReaction(post.id, "fire", "f-jonas");
-          notify("reaction", translate("notif_reaction", { name: "Jonas" }), "/wardrobe");
-        }, 2500);
-        setTimeout(() => {
-          const target = layers[0];
-          if (!target) return;
-          const offered =
-            FRIEND_ITEMS.find((i) => i.visibility.sharedWithCrew && i.category === target.category && i.ownerId === "f-lea") ??
-            FRIEND_ITEMS.find((i) => i.visibility.sharedWithCrew && i.category === target.category);
-          if (!offered) return;
-          get().addComment(post.id, {
-            authorId: offered.ownerId,
-            kind: "swap",
-            text: translate("swap_better", { name: offered.name }),
-            swap: {
-              offeredItemId: offered.id,
-              offeredName: offered.name,
-              targetItemId: target.itemId,
-              targetName: target.name,
-            },
-          });
-          notify(
-            "swap",
-            translate("notif_swap", { name: offered.ownerId === "f-lea" ? "Lea" : translate("notif_aFriend"), item: offered.name }),
-            "/wardrobe",
-          );
-        }, 6000);
-        if (post.isPublic) simulatePublicLikes(post.id, () => !!get().posts.find((p) => p.id === post.id)?.isPublic);
-
-        return post.id;
-      },
-
-      // Crews liegen in der Cloud und bleiben unberührt; gelöscht werden nur die lokalen Posts
-      clearAll: () => set({ posts: [] }),
-
-      togglePublic: (postId) => {
-        const post = get().posts.find((p) => p.id === postId);
-        set((s) => ({ posts: s.posts.map((p) => (p.id === postId ? { ...p, isPublic: !p.isPublic } : p)) }));
-        // Wird ein eigener Fit gerade öffentlich, kommen (simuliert) Likes
-        if (post && post.authorId === "me" && !post.isPublic) {
-          simulatePublicLikes(postId, () => !!get().posts.find((p) => p.id === postId)?.isPublic);
+      loadPosts: async (scope) => {
+        set({ postsLoading: true });
+        try {
+          const { posts, profiles } = await social.getPosts(scope);
+          useAuthorsStore.getState().add(profiles);
+          set((s) => ({ posts: mergePosts(s.posts, posts, scope), postsLoading: false }));
+          void useSocialStore.getState().loadPostLikes(posts.map((p) => p.id));
+        } catch (e) {
+          console.error("Posts laden fehlgeschlagen:", e);
+          set({ postsLoading: false });
+          failToast("social_errLoad");
         }
       },
 
-      toggleReaction: (postId, type, userId = "me") =>
-        set((s) => ({
-          posts: s.posts.map((p) => {
-            if (p.id !== postId) return p;
-            const has = p.reactions[type].includes(userId);
-            return {
+      sendFit: async ({ crewId, layers, caption, isPublic }) => {
+        const result = await social.createPost({ crewId, layers, caption, isPublic: crewId === null ? true : !!isPublic });
+        if (!result.ok) return result;
+        set((s) => ({ posts: [result.post, ...s.posts.filter((p) => p.id !== result.post.id)] }));
+        void useSocialStore.getState().loadPostLikes([result.post.id]);
+        return { ok: true, id: result.post.id };
+      },
+
+      deletePost: async (postId) => {
+        const before = get().posts;
+        set({ posts: before.filter((p) => p.id !== postId) });
+        try {
+          await social.deletePost(postId);
+          toast(translate("post_deletedToast"));
+        } catch (e) {
+          console.error("Post löschen fehlgeschlagen:", e);
+          set({ posts: before });
+          failToast("social_errAction");
+        }
+      },
+
+      togglePublic: async (postId) => {
+        const post = get().posts.find((p) => p.id === postId);
+        if (!post || post.crewId === null) return; // ohne Crew bleibt der Fit immer öffentlich
+        const next = !post.isPublic;
+        set((s) => ({ posts: patchPost(s.posts, postId, (p) => ({ ...p, isPublic: next })) }));
+        try {
+          await social.setPostPublic(postId, next);
+        } catch (e) {
+          console.error("Sichtbarkeit ändern fehlgeschlagen:", e);
+          set((s) => ({ posts: patchPost(s.posts, postId, (p) => ({ ...p, isPublic: !next })) }));
+          failToast("social_errAction");
+        }
+      },
+
+      toggleReaction: async (postId, type) => {
+        const me = meId();
+        const post = get().posts.find((p) => p.id === postId);
+        if (!me || !post) return;
+        const had = post.reactions[type].includes(me);
+        const apply = (on: boolean) =>
+          set((s) => ({
+            posts: patchPost(s.posts, postId, (p) => ({
               ...p,
               reactions: {
                 ...p.reactions,
-                [type]: has ? p.reactions[type].filter((u) => u !== userId) : [...p.reactions[type], userId],
+                [type]: on ? [...p.reactions[type].filter((u) => u !== me), me] : p.reactions[type].filter((u) => u !== me),
               },
-            };
-          }),
-        })),
+            })),
+          }));
+        apply(!had); // optimistisch
+        try {
+          const on = await social.toggleReaction(postId, type);
+          if (on === had) apply(on); // Server war anderer Meinung: Stand übernehmen
+        } catch (e) {
+          console.error("Reaktion fehlgeschlagen:", e);
+          apply(had); // Rollback
+          failToast("social_errAction");
+        }
+      },
 
-      addComment: (postId, c) =>
-        set((s) => ({
-          posts: s.posts.map((p) =>
-            p.id === postId ? { ...p, comments: [...p.comments, { ...c, id: uid(), createdAt: Date.now() }] } : p,
-          ),
-        })),
+      deleteComment: async (postId, commentId) => {
+        const before = get().posts;
+        set((s) => ({ posts: patchPost(s.posts, postId, (p) => ({ ...p, comments: p.comments.filter((c) => c.id !== commentId) })) }));
+        try {
+          await social.deleteComment(commentId);
+          toast(translate("comment_deletedToast"));
+        } catch (e) {
+          console.error("Kommentar löschen fehlgeschlagen:", e);
+          set({ posts: before });
+          failToast("social_errAction");
+        }
+      },
+
+      addComment: async (postId, c) => {
+        try {
+          const comment: FitComment =
+            c.kind === "swap"
+              ? await social.addSwapComment(postId, { text: c.text, swap: c.swap })
+              : await social.addComment(postId, c.text);
+          set((s) => ({ posts: patchPost(s.posts, postId, (p) => ({ ...p, comments: [...p.comments, comment] })) }));
+          return true;
+        } catch (e) {
+          console.error("Kommentar fehlgeschlagen:", e);
+          failToast("social_errAction");
+          return false;
+        }
+      },
+
+      // Crews und Posts liegen in der Cloud und bleiben unberührt
+      clearAll: () => set({}),
     }),
     {
       name: STORAGE.crew,
-      version: 3,
-      // v2: neue Seed-Posts mit echten Kleidungsfotos; v3: Crews kommen aus Supabase (alte lokale Crews verwerfen)
-      migrate: (persisted, version) => {
-        const s = persisted as { posts?: FitPost[] };
-        const posts =
-          version < 2 ? [...(s.posts ?? []).filter((p) => !p.id.startsWith("seed-")), ...SEED_POSTS] : s.posts ?? SEED_POSTS;
-        return { posts, activeCrewId: null } as unknown as CrewState;
-      },
-      partialize: (s) => ({ activeCrewId: s.activeCrewId, posts: s.posts }),
+      version: 4,
+      // v3: Crews aus Supabase; v4: auch Posts aus Supabase (alte lokale Posts/Mock-Posts verwerfen)
+      migrate: () => ({ activeCrewId: null }) as unknown as CrewState,
+      partialize: (s) => ({ activeCrewId: s.activeCrewId }),
     },
   ),
 );

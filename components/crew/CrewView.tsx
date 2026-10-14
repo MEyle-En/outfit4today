@@ -124,6 +124,8 @@ export function CrewView() {
   const activeCrewId = useCrewStore((s) => s.activeCrewId);
   const setActiveCrew = useCrewStore((s) => s.setActiveCrew);
   const allPosts = useCrewStore((s) => s.posts);
+  const postsLoading = useCrewStore((s) => s.postsLoading);
+  const loadPosts = useCrewStore((s) => s.loadPosts);
   const tab = useCrewStore((s) => s.crewTab);
   const setTab = useCrewStore((s) => s.setCrewTab);
 
@@ -159,6 +161,13 @@ export function CrewView() {
   );
   const members = useCrewStore((s) => (crew ? s.members[crew.id] : undefined)) ?? NO_MEMBERS;
   const memberName = (id: string) => (id === meId ? t("crew_you") : members.find((m) => m.id === id)?.name ?? "");
+
+  // Posts aus Supabase: Crew-Tab = Posts der aktiven Crew, Public-Tab = öffentliche Posts
+  const crewId = crew?.id;
+  useEffect(() => {
+    if (tab === "public") void loadPosts("public");
+    else if (tab === "fits" && crewId) void loadPosts(crewId);
+  }, [tab, crewId, loadPosts]);
 
   // Geteilte Teile der anderen Mitglieder aus Supabase (die Datenbank liefert nur, was freigegeben ist)
   const memberKey = crew?.memberIds.join(",") ?? "";
@@ -281,7 +290,9 @@ export function CrewView() {
         </TabsList>
 
         <TabsContent value="public" className="space-y-4">
-          {publicPosts.length === 0 ? (
+          {postsLoading && publicPosts.length === 0 ? (
+            <Skeleton className="h-64 w-full" />
+          ) : publicPosts.length === 0 ? (
             <EmptyState
               icon={Globe}
               title={t("public_emptyTitle")}
@@ -297,6 +308,8 @@ export function CrewView() {
         <TabsContent value="fits" className="space-y-4">
           {!crew ? (
             crewsLoaded ? noCrew : null
+          ) : postsLoading && posts.length === 0 ? (
+            <Skeleton className="h-64 w-full" />
           ) : posts.length === 0 ? (
             <EmptyState
               icon={Sparkles}

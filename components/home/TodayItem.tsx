@@ -15,6 +15,8 @@ import { toast } from "@/lib/store/useToastStore";
 import { todayKey, useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { haptic } from "@/lib/utils/haptic";
 import { daysSince } from "@/lib/wear";
+import { ExampleBadge } from "@/components/ui/ExampleBadge";
+import { isDemoItem } from "@/lib/demo";
 import type { WardrobeItem } from "@/types";
 
 const isToday = (iso?: string) => !!iso && new Date(iso).toDateString() === new Date().toDateString();
@@ -116,7 +118,10 @@ export function TodayItem() {
           className="animate-fade-in-up space-y-3 rounded-2xl border border-white/10 bg-surface p-3"
         >
           <div className="flex gap-4">
-            <ItemImage src={candidate.image} alt={candidate.name} transparent={candidate.hasTransparentBackground} className="aspect-[4/5] w-32 shrink-0 rounded-xl" />
+            <div className="relative shrink-0">
+              <ItemImage src={candidate.image} alt={candidate.name} transparent={candidate.hasTransparentBackground} className="aspect-[4/5] w-32 rounded-xl" />
+              {isDemoItem(candidate) && <ExampleBadge className="absolute left-1.5 top-1.5" />}
+            </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="font-display text-2xl font-bold leading-tight">{candidate.name}</p>
               <p className="text-sm text-zinc-400">

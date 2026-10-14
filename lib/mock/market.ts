@@ -1,3 +1,4 @@
+import { isDemoItem } from "@/lib/demo";
 import { MOCK_ITEMS } from "@/lib/mock-data";
 import type { BundleListing, ItemCategory, ItemColor, VibeId, WardrobeItem } from "@/types";
 
@@ -14,6 +15,8 @@ export interface MarketListing {
   /** bei Verkauf oder "both", in € */
   price?: number;
   /** Gesetzt, wenn das Angebot ein Outfit-Bundle ist */
+  /** Beispiel-Inhalt (kein echtes Angebot) -> "Beispiel"-Badge */
+  demo?: boolean;
   /** Größe (XS–XXL / EU-Schuhgröße), falls angegeben */
   size?: string;
   /** Freigestelltes Teil (ohne Kasten darstellen) */
@@ -35,6 +38,7 @@ export const MARKET_LISTINGS: MarketListing[] = [
     vibe: m.vibe,
     mode: m.listing!,
     price: m.listing === "swap" ? undefined : m.price,
+    demo: true,
   })),
   // Bundles: mehrere Teile eines Freundes zum Set-Preis
   bundleOf("b1", "Mila", "3-Teil Set: Pink Tee + Red Dress + Gold Necklace", ["f-mila-1", "f-mila-2", "f-mila-3"], 120, "y2k", true),
@@ -53,6 +57,7 @@ function bundleOf(id: string, seller: string, name: string, itemIds: string[], p
     vibe,
     mode: "sell",
     price,
+    demo: true,
     bundle: { count: parts.length, onlyTogether, images: parts.map((p) => p.photo).slice(0, 3) },
   };
 }
@@ -73,6 +78,7 @@ export function myBundleListings(bundles: BundleListing[], items: WardrobeItem[]
         color: parts[0].color ?? "multicolor",
         mode: "sell" as const,
         price: b.bundlePrice,
+        demo: parts.every(isDemoItem),
         transparent: parts[0].hasTransparentBackground,
         bundle: {
           count: parts.length,
@@ -95,6 +101,7 @@ export function myListings(items: WardrobeItem[]): MarketListing[] {
       mine: true,
       name: i.name,
       image: i.image,
+      demo: isDemoItem(i),
       size: i.size,
       transparent: i.hasTransparentBackground,
       category: i.category,

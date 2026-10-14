@@ -43,7 +43,20 @@ export function SendToCrewButton({ disabled }: { disabled?: boolean }) {
   const layers: FitLayer[] = canvasItems.flatMap((ci) => {
     const item = wardrobe.find((w) => w.id === ci.itemId);
     return item
-      ? [{ itemId: item.id, name: item.name, category: item.category, x: ci.x, y: ci.y, size: ci.size, rotation: ci.rotation }]
+      ? [
+          {
+            itemId: item.id,
+            name: item.name,
+            category: item.category,
+            // Snapshot für den Post (Bild-URL zum Zeitpunkt des Postens)
+            imageUrl: item.image,
+            hasTransparentBackground: item.hasTransparentBackground,
+            x: ci.x,
+            y: ci.y,
+            size: ci.size,
+            rotation: ci.rotation,
+          },
+        ]
       : [];
   });
 
@@ -58,21 +71,36 @@ export function SendToCrewButton({ disabled }: { disabled?: boolean }) {
     router.push("/wardrobe");
   };
 
-  const sendToCrew = () => {
-    if (!selected || !layers.length) return;
-    sendFit({ crewId: selected, layers, caption, isPublic });
-    setActiveCrew(selected);
-    setCrewTab(isPublic ? "public" : "fits");
-    toast(isPublic ? t("share_toastCrewPublic") : t("share_toastCrew"));
+  const [busy, setBusy] = useState(false);
+
+  /** Fit als Snapshot in die Cloud posten; Fehler werden dem Nutzer erklärt, der Dialog bleibt offen. */
+  const post = async (crew: string | null, pub: boolean, onOk: () => void) => {
+    if (busy || !layers.length) return;
+    setBusy(true);
+    const result = await sendFit({ crewId: crew, layers, caption, isPublic: pub });
+    setBusy(false);
+    if (!result.ok) {
+      toast(t(result.error === "pendingUpload" ? "share_errPending" : "share_errPost"), undefined, "error");
+      return;
+    }
+    onOk();
     finish();
   };
 
+  const sendToCrew = () => {
+    if (!selected) return;
+    void post(selected, isPublic, () => {
+      setActiveCrew(selected);
+      setCrewTab(isPublic ? "public" : "fits");
+      toast(isPublic ? t("share_toastCrewPublic") : t("share_toastCrew"));
+    });
+  };
+
   const postPublicOnly = () => {
-    if (!layers.length) return;
-    sendFit({ crewId: null, layers, caption, isPublic: true });
-    setCrewTab("public");
-    toast(t("share_toastPublic"), t("share_toastPublicDesc"));
-    finish();
+    void post(null, true, () => {
+      setCrewTab("public");
+      toast(t("share_toastPublic"), t("share_toastPublicDesc"));
+    });
   };
 
   return (
@@ -133,10 +161,10 @@ export function SendToCrewButton({ disabled }: { disabled?: boolean }) {
 
             {crews.length === 0 && <p className="text-center text-sm text-zinc-400">{t("share_noCrew")}</p>}
 
-            <Button size="lg" className="w-full" onClick={sendToCrew} disabled={!selected || !layers.length}>
+            <Button size="lg" className="w-full" onClick={sendToCrew} disabled={!selected || !layers.length || busy}>
               <Users className="h-5 w-5" /> {isPublic ? t("share_sendCrewPublic") : t("share_sendCrew")}
             </Button>
-            <Button size="lg" variant="glass" className="w-full" onClick={postPublicOnly} disabled={!layers.length}>
+            <Button size="lg" variant="glass" className="w-full" onClick={postPublicOnly} disabled={!layers.length || busy}>
               <Globe className="h-5 w-5" /> {t("share_publicOnly")}
             </Button>
             <Button size="lg" variant="warm" className="w-full" onClick={() => setBundleOpen(true)} disabled={!layers.length}>

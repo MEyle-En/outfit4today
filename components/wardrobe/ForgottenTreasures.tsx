@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { cn } from "@/lib/utils";
+import { ExampleBadge } from "@/components/ui/ExampleBadge";
+import { isDemoItem } from "@/lib/demo";
 import { Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,9 +43,12 @@ export function ForgottenTreasures() {
           <article key={item.id} className={cn("w-40 shrink-0 snap-start overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}>
             <div className="relative aspect-[4/5]">
               <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
-              <Badge variant="glass" className="absolute left-2 top-2 bg-black/60 py-0.5 text-[10px] text-white">
-                {reason}
-              </Badge>
+              <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+                {isDemoItem(item) && <ExampleBadge />}
+                <Badge variant="glass" className="bg-black/60 py-0.5 text-[10px] text-white">
+                  {reason}
+                </Badge>
+              </div>
             </div>
             <div className="space-y-2 p-2.5">
               <p className="truncate text-sm font-semibold">{item.name}</p>

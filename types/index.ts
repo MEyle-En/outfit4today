@@ -116,6 +116,9 @@ export interface FitLayer {
   itemId: string;
   name: string;
   category: ItemCategory;
+  /** Snapshot: Foto zum Zeitpunkt des Postens (Storage-URL), damit der Post auch ohne das Original-Item darstellbar bleibt */
+  imageUrl?: string;
+  hasTransparentBackground?: boolean;
   x: number;
   y: number;
   size: number;
@@ -125,8 +128,12 @@ export interface FitLayer {
 export interface SwapSuggestion {
   offeredItemId: string;
   offeredName: string;
+  offeredImage?: string;
+  offeredTransparent?: boolean;
   targetItemId: string;
   targetName: string;
+  targetImage?: string;
+  targetTransparent?: boolean;
 }
 
 export interface FitComment {

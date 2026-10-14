@@ -25,7 +25,7 @@ const GRADIENTS = [
 ];
 
 /** Stabiler Farbverlauf je Nutzer, solange kein Avatar gesetzt ist. */
-const gradientFor = (id: string) => GRADIENTS[Array.from(id).reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % GRADIENTS.length];
+export const gradientFor = (id: string) => GRADIENTS[Array.from(id).reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % GRADIENTS.length];
 
 const toCrew = (r: CrewRow, memberIds: string[]): Crew => ({
   id: r.id,
