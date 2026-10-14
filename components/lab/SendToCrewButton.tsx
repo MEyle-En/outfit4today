@@ -50,7 +50,7 @@ export function SendToCrewButton({ disabled }: { disabled?: boolean }) {
   const selected = crewId ?? activeCrewId ?? crews[0]?.id ?? null;
 
   const finish = () => {
-    useWardrobeStore.getState().markWorn(layers.map((l) => l.itemId));
+    useWardrobeStore.getState().wearItems(layers.map((l) => l.itemId));
     setWardrobeView("crew");
     setOpen(false);
     setCaption("");

@@ -3,6 +3,7 @@ import { categoryFromLabel } from "@/lib/categories";
 import { MOCK_WARDROBE } from "@/lib/mock/wardrobe";
 import { toast } from "@/lib/store/useToastStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
+import { healPlaceholderImage } from "@/lib/mock-data";
 import { newId } from "@/lib/utils/uuid";
 import { visibilityFromLegacy } from "@/lib/visibility";
 import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from "@/types";
@@ -51,7 +52,13 @@ export function rowToItem(r: Row): WardrobeItem {
   return {
     id: r.id,
     name: r.name,
-    image: r.image_url,
+    image: healPlaceholderImage({
+      isPlaceholder: !!r.is_placeholder,
+      image: r.image_url,
+      category: (r.category as ItemCategory | null) ?? "top",
+      color: (r.color ?? undefined) as ItemColor | undefined,
+      hasTransparentBackground: !!r.has_transparent_background,
+    }),
     isPlaceholder: !!r.is_placeholder,
     tags,
     category: (r.category as ItemCategory | null) ?? categoryFromLabel(tags.find((t) => t.kind === "category")?.label),
@@ -98,7 +105,7 @@ export async function loadItems(userId: string): Promise<WardrobeItem[]> {
 
 /** Data-URL (Upload/Freistellung) -> Storage; liefert die öffentliche URL. Andere Bilder bleiben unverändert. */
 async function uploadImage(userId: string, item: WardrobeItem): Promise<string> {
-  if (!item.image.startsWith("data:")) return item.image;
+  if (!item.image.startsWith("data:") || item.image.startsWith("data:image/svg")) return item.image;
   const blob = await (await fetch(item.image)).blob();
   const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
   // Neuer Dateiname pro Bild, damit CDN/Browser nach Änderungen (z. B. Freistellen) nichts Altes zeigen

@@ -77,6 +77,43 @@ export const PORTRAITS: Record<Exclude<OwnerId, "me">, string> = {
  */
 export function placeholderPhoto(category: ItemCategory, color?: ItemColor): string {
   const sameCat = MOCK_ITEMS.filter((i) => i.category === category);
-  const best = sameCat.find((i) => i.color === color) ?? sameCat[0] ?? MOCK_ITEMS[0];
-  return best.photo;
+  const best = sameCat.find((i) => i.color === color) ?? sameCat[0];
+  // Für Kategorien ohne Katalogfoto (Hüte, Socken …) KEIN fremdes Foto zeigen, sondern ein neutrales Symbol-Bild
+  return best ? best.photo : categoryArt(category, color);
+}
+
+const ART_EMOJI: Record<string, string> = {
+  top: "👕", bottom: "👖", outerwear: "🧥", dress: "👗", shoes: "👟", bag: "👜", jewelry: "💍",
+  hat: "🧢", hijab: "🧕", socks: "🧦", accessory: "🕶️", lifestyle: "🪴",
+};
+const ART_COLOR: Record<string, string> = {
+  black: "#27272a", white: "#e4e4e7", gray: "#6b7280", blue: "#3b82f6", red: "#ef4444", green: "#22c55e",
+  yellow: "#eab308", brown: "#78350f", beige: "#d6c3a3", pink: "#ec4899", purple: "#a855f7", orange: "#f97316",
+  multicolor: "#a855f7",
+};
+
+/** Neutrales Bild (SVG als Data-URL): Farbverlauf in der Item-Farbe mit dem Kategorie-Symbol. */
+export function categoryArt(category: ItemCategory, color?: ItemColor): string {
+  const c = (color && ART_COLOR[color]) || "#52525b";
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}" stop-opacity="0.85"/><stop offset="1" stop-color="#18181b"/></linearGradient></defs>` +
+    `<rect width="400" height="500" fill="url(#g)"/>` +
+    `<text x="200" y="290" font-size="180" text-anchor="middle">${ART_EMOJI[category] ?? "👕"}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Platzhalter-Items (Quick Add) bekommen ihr Bild immer passend zu Kategorie/Farbe. Repariert damit auch alte Items,
+ * die früher ein falsches Foto erhalten haben. Eigene Bilder (Upload, Freistellung) bleiben unangetastet.
+ */
+export function healPlaceholderImage(i: {
+  isPlaceholder?: boolean;
+  image: string;
+  category: ItemCategory;
+  color?: ItemColor;
+  hasTransparentBackground?: boolean;
+}): string {
+  const isGenerated = i.image.startsWith("https://images.unsplash.com") || i.image.startsWith("data:image/svg");
+  return i.isPlaceholder && isGenerated && !i.hasTransparentBackground ? placeholderPhoto(i.category, i.color) : i.image;
 }

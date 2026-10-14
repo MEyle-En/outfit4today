@@ -15,6 +15,7 @@ import {
 import { FilePlus2, Type } from "lucide-react";
 import { Canvas } from "@/components/lab/Canvas";
 import { ExportButton } from "@/components/lab/ExportButton";
+import { WearTodayButton } from "@/components/lab/WearTodayButton";
 import { SendToCrewButton } from "@/components/lab/SendToCrewButton";
 import { TrayThumb, WardrobeSidebar } from "@/components/lab/WardrobeSidebar";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ export default function LabPage() {
             <SendToCrewButton disabled={canvasItems.length === 0} />
             <ExportButton disabled={canvasItems.length === 0} />
           </div>
+          <WearTodayButton />
         </header>
 
         <Canvas />

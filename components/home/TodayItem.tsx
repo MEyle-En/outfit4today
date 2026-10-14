@@ -31,7 +31,7 @@ export function TodayItem() {
   const router = useRouter();
   const items = useWardrobeStore((s) => s.items);
   const daily = useWardrobeStore((s) => s.daily);
-  const markWorn = useWardrobeStore((s) => s.markWorn);
+  const wearItems = useWardrobeStore((s) => s.wearItems);
   const markHandledToday = useWardrobeStore((s) => s.markHandledToday);
   const resetDaily = useWardrobeStore((s) => s.resetDaily);
 
@@ -62,7 +62,7 @@ export function TodayItem() {
 
   const wear = () => {
     if (!candidate) return;
-    markWorn([candidate.id]);
+    wearItems([candidate.id]); // last_worn + wear_count, der Sync speichert es in der Cloud
     markHandledToday(candidate.id); // -> nächstes Teil erscheint sofort
     playSound("success");
     haptic("success");

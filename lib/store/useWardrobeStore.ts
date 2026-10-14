@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 import { categoryFromLabel } from "@/lib/categories";
 import { colorFromLabel } from "@/lib/colors";
 import { applyVisibility, defaultVisibility, visibilityFromLegacy } from "@/lib/visibility";
-import { placeholderPhoto } from "@/lib/mock-data";
+import { healPlaceholderImage, placeholderPhoto } from "@/lib/mock-data";
 import { newId } from "@/lib/utils/uuid";
 import { MOCK_WARDROBE } from "@/lib/mock/wardrobe";
 import type { ItemCategory, ItemColor, ItemTag, Visibility, WardrobeItem } from "@/types";
@@ -44,7 +44,7 @@ interface WardrobeState {
   /** Items für den Marktplatz listen (oder mit undefined wieder entfernen) */
   setListing: (ids: string[], listing: WardrobeItem["listing"], price?: number) => void;
   /** Teile als heute getragen markieren (wearCount + 1) */
-  markWorn: (ids: string[]) => void;
+  wearItems: (ids: string[]) => number;
   clearAll: () => void;
 }
 
@@ -69,7 +69,7 @@ const patch = (items: WardrobeItem[], id: string, p: Partial<WardrobeItem>) =>
 
 export const useWardrobeStore = create<WardrobeState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       items: MOCK_WARDROBE,
       daily: { date: todayKey(), handled: [] },
       markHandledToday: (id) =>
@@ -118,12 +118,17 @@ export const useWardrobeStore = create<WardrobeState>()(
               : i,
           ),
         })),
-      markWorn: (ids) =>
-        set((s) => ({
-          items: s.items.map((i) =>
-            ids.includes(i.id) ? { ...i, wearCount: i.wearCount + 1, lastWorn: new Date().toISOString() } : i,
-          ),
-        })),
+      wearItems: (ids) => {
+        const unique = new Set(ids);
+        const count = get().items.filter((i) => unique.has(i.id)).length;
+        if (count > 0) {
+          const now = new Date().toISOString();
+          set((s) => ({
+            items: s.items.map((i) => (unique.has(i.id) ? { ...i, wearCount: i.wearCount + 1, lastWorn: now } : i)),
+          }));
+        }
+        return count;
+      },
       clearAll: () => set({ items: [], daily: { date: todayKey(), handled: [] } }),
     }),
     {
@@ -158,7 +163,7 @@ export const useWardrobeStore = create<WardrobeState>()(
             ? { ...m, wearCount: i.wearCount, lastWorn: i.lastWorn, visibility: i.visibility, listing: i.listing, price: i.price }
             : { ...i, image: placeholderPhoto(i.category, i.color) };
         };
-        const items = (p?.items ?? current.items).map(fixImage).map((i) =>
+        const items = (p?.items ?? current.items).map(fixImage).map((i) => ({ ...i, image: healPlaceholderImage(i) })).map((i) =>
           ({ ...i, wearCount: i.wearCount ?? 0, color: i.color ?? colorFromLabel(i.tags?.find((t) => t.kind === "color")?.label) }),
         ).map((i) => {
           // Alte Items (nur sharedWithCrew/listing) bekommen das neue visibility-Objekt; das Altfeld verschwindet

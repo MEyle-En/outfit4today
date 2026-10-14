@@ -28,14 +28,14 @@ export function TodayItemActions({
       <Button size="sm" className="shrink-0" onClick={onStyle}>
         <Palette className="h-4 w-4" /> {t("today_style")}
       </Button>
+      <Button size="sm" className="shrink-0 border border-accent/40 bg-accent/20 text-white hover:bg-accent/30" onClick={onWorn}>
+        <Check className="h-4 w-4" /> {t("today_worn")}
+      </Button>
       <Button size="sm" variant="glass" className="shrink-0" onClick={onSell}>
         <Tag className="h-4 w-4" /> {t("today_sell")}
       </Button>
       <Button size="sm" variant="glass" className="shrink-0" onClick={onSwap}>
         <ArrowLeftRight className="h-4 w-4" /> {t("today_swap")}
-      </Button>
-      <Button size="sm" variant="glass" className="shrink-0" onClick={onWorn}>
-        <Check className="h-4 w-4" /> {t("today_worn")}
       </Button>
       <Button size="sm" variant="glass" className="shrink-0" onClick={onSkip}>
         <ArrowRight className="h-4 w-4" /> {t("today_skip")}
