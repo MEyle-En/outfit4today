@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useBundleStore } from "@/lib/store/useBundleStore";
-import { useChatStore } from "@/lib/store/useChatStore";
+import { useChatStore, unreadOf, type ThreadMeta } from "@/lib/store/useChatStore";
+import { useModerationStore } from "@/lib/store/useModerationStore";
 import { notify } from "@/lib/store/useNotificationStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import type { BundleListing, WardrobeItem } from "@/types";
@@ -19,14 +20,12 @@ function ListingRow({ item }: { item: WardrobeItem }) {
   const { t } = useTranslation();
   const setListing = useWardrobeStore((s) => s.setListing);
   const removeItem = useWardrobeStore((s) => s.removeItem);
-  // Wichtig: Selektor liefert die stabile `threads`-Referenz; gefiltert wird erst danach.
-  // (Ein `.filter()` im Selektor erzeugt bei jedem Aufruf ein neues Array -> "Maximum update depth exceeded".)
+  // Selektor liefert die stabile `threads`-Referenz; gefiltert wird erst danach (sonst "Maximum update depth exceeded")
   const allThreads = useChatStore((s) => s.threads);
-  const thread = useMemo(
-    () => allThreads.find((x) => x.role === "seller" && x.listingId === `mine-${item.id}`),
+  const inquiries = useMemo(
+    () => allThreads.filter((x) => x.role === "seller" && x.listingId === item.id).length,
     [allThreads, item.id],
   );
-  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <article className="animate-fade-in-up card-lift flex gap-3 rounded-2xl border border-white/10 bg-surface p-3">
@@ -65,15 +64,7 @@ function ListingRow({ item }: { item: WardrobeItem }) {
           </button>
         )}
 
-        {thread ? (
-          <Button size="sm" variant="glass" onClick={() => setChatOpen(true)}>
-            <MessageCircle className="h-4 w-4" /> {t("mine_inquiryFrom", { name: thread.counterpart })}
-            {thread.messages.length > 0 && <span className="text-zinc-400">({thread.messages.length})</span>}
-          </Button>
-        ) : (
-          <p className="text-xs text-zinc-500">{t("mine_noInquiries")}</p>
-        )}
-        {thread && <ChatDialog meta={thread} open={chatOpen} onOpenChange={setChatOpen} />}
+        <p className="text-xs text-zinc-500">{inquiries > 0 ? t("mine_inquiryCount", { n: inquiries }) : t("mine_noInquiries")}</p>
       </div>
     </article>
   );
@@ -110,6 +101,52 @@ function BundleRow({ bundle }: { bundle: BundleListing }) {
   );
 }
 
+/** "Anfragen": Chats, in denen jemand zu einem meiner Angebote schreibt (ich bin der Verkäufer), mit Badge für Ungelesenes. */
+function InquiriesSection() {
+  const { t } = useTranslation();
+  const threads = useChatStore((s) => s.threads);
+  const readAt = useChatStore((s) => s.readAt);
+  const blocked = useModerationStore((s) => s.blocked);
+  const [open, setOpen] = useState<ThreadMeta | null>(null);
+  const inquiries = useMemo(
+    () => threads.filter((x) => x.role === "seller" && !blocked.includes(x.counterpartId)),
+    [threads, blocked],
+  );
+  const total = inquiries.reduce((n, th) => n + unreadOf(th, readAt), 0);
+  if (inquiries.length === 0) return null;
+
+  return (
+    <section className="space-y-2 rounded-2xl border border-accent/30 bg-accent/10 p-3" aria-label={t("inq_title")}>
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <MessageCircle className="h-4 w-4 text-accent-soft" /> {t("inq_title")}
+        {total > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-white">{total}</span>}
+      </h3>
+      <ul className="space-y-1.5">
+        {inquiries.map((th) => {
+          const unread = unreadOf(th, readAt);
+          return (
+            <li key={th.id}>
+              <button
+                onClick={() => setOpen(th)}
+                className="flex w-full items-center gap-3 rounded-xl bg-black/20 p-2 text-left hover:bg-black/30"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {th.counterpart || t("user_unknown")} · <span className="text-zinc-400">{th.title}</span>
+                  </span>
+                  <span className={`block truncate text-xs ${unread ? "text-white" : "text-zinc-500"}`}>{th.last?.text ?? t("chat_first")}</span>
+                </span>
+                {unread > 0 && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-label={t("inq_unread")} />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {open && <ChatDialog meta={open} open onOpenChange={(o) => !o && setOpen(null)} />}
+    </section>
+  );
+}
+
 /** "Meine Verkäufe": alle eigenen Teile und Bundles, die ich zum Verkauf/Tausch anbiete, mit Status. */
 export function MyListings() {
   const { t } = useTranslation();
@@ -134,6 +171,7 @@ export function MyListings() {
           <Button variant="glass" size="sm" className="w-full" onClick={() => setListOpen(true)}>
             <Plus className="h-4 w-4" /> {t("mine_offerMore")}
           </Button>
+          <InquiriesSection />
           {bundles.map((b) => (
             <BundleRow key={b.id} bundle={b} />
           ))}

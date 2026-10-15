@@ -11,6 +11,7 @@ import { clearPendingJoin, getPendingJoin } from "@/lib/utils/pendingJoin";
 import { getMyAvatarUrl } from "@/lib/supabase-account";
 import { useProfileStore } from "@/lib/store/useProfileStore";
 import { ensureProfile } from "@/lib/supabase-social";
+import { startChatSync } from "@/lib/store/useChatStore";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { useModerationStore } from "@/lib/store/useModerationStore";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
@@ -111,6 +112,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       useModerationStore.getState().reset();
     };
   }, [userId, router]);
+
+  // Chat: Threads laden und per Realtime auf neue Nachrichten hören (Benachrichtigung bei geschlossenem Dialog)
+  useEffect(() => {
+    if (!userId) return;
+    return startChatSync();
+  }, [userId]);
 
   useEffect(() => {
     if (target) router.replace(target);

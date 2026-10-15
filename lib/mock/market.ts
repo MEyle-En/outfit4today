@@ -6,6 +6,8 @@ export interface MarketListing {
   id: string;
   seller: string;
   mine?: boolean;
+  /** Supabase-User-ID des Anbieters (nur bei echten Angeboten; Beispiel-Angebote haben keine) */
+  sellerId?: string;
   name: string;
   image: string;
   category: ItemCategory;

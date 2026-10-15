@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { PickTile } from "@/components/wardrobe/PickTile";
 import { useTranslation } from "@/hooks/useTranslation";
-import { simulateBuyerInquiry } from "@/lib/store/useChatStore";
 import { toast } from "@/lib/store/useToastStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { cn } from "@/lib/utils";
@@ -51,9 +50,6 @@ export function ListItemDialog({
   const submit = () => {
     if (!canSubmit) return;
     setListing(selected, mode, needsPrice ? priceValue : undefined);
-    items
-      .filter((i) => selected.includes(i.id))
-      .forEach((i) => simulateBuyerInquiry({ id: i.id, name: i.name, image: i.image, listing: mode, price: needsPrice ? priceValue : undefined }));
     toast(t("toast_listed"), t("toast_listedCount", { n: selected.length }));
     setSelected([]);
     setPrice("");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, ShoppingBag, Tag } from "lucide-react";
 import { MarketCard } from "@/components/market/MarketCard";
 import { MyListings } from "@/components/market/MyListings";
@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCategoryOptions } from "@/lib/categories";
-import { MARKET_LISTINGS, myBundleListings, myListings } from "@/lib/mock/market";
+import { MARKET_LISTINGS, myBundleListings, myListings, type MarketListing } from "@/lib/mock/market";
+import { useModerationStore } from "@/lib/store/useModerationStore";
+import { getMarketListings } from "@/lib/supabase-market";
 import { useBundleStore } from "@/lib/store/useBundleStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
@@ -32,6 +34,19 @@ export default function MarketplacePage() {
   const icons = useStyleStore((s) => s.icons);
   const wardrobe = useWardrobeStore((s) => s.items);
   const bundles = useBundleStore((s) => s.bundles);
+
+  const blocked = useModerationStore((s) => s.blocked);
+  // Echte Angebote anderer Nutzer (Supabase); die Beispiel-Angebote bleiben als Demo dabei (ohne Chat)
+  const [cloudListings, setCloudListings] = useState<MarketListing[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getMarketListings()
+      .then((l) => !cancelled && setCloudListings(l))
+      .catch((e) => console.error("Marktplatz laden fehlgeschlagen:", e));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [mode, setMode] = useState<Mode>("all");
   const [category, setCategory] = useState<ItemCategory | "all">("all");
@@ -56,11 +71,16 @@ export default function MarketplacePage() {
 
   const all = useMemo(
     () =>
-      [...myBundleListings(bundles, wardrobe), ...myListings(wardrobe), ...MARKET_LISTINGS].map((listing) => ({
+      [
+        ...myBundleListings(bundles, wardrobe),
+        ...myListings(wardrobe),
+        ...cloudListings.filter((l) => !blocked.includes(l.sellerId ?? "")),
+        ...MARKET_LISTINGS,
+      ].map((listing) => ({
         listing,
         match: matchScore(listing, prefs),
       })),
-    [wardrobe, bundles, prefs],
+    [wardrobe, bundles, prefs, cloudListings, blocked],
   );
 
   const shown = useMemo(

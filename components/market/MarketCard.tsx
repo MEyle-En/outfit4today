@@ -12,6 +12,7 @@ import { swatchOf } from "@/lib/colors";
 import type { MarketListing } from "@/lib/mock/market";
 import { stagger } from "@/lib/stagger";
 import { cn } from "@/lib/utils";
+import { useChatStore, type ThreadMeta } from "@/lib/store/useChatStore";
 import { likeKey } from "@/lib/store/useSocialStore";
 
 export function MarketCard({
@@ -26,7 +27,23 @@ export function MarketCard({
   index?: number;
 }) {
   const { t } = useTranslation();
-  const [chatOpen, setChatOpen] = useState(false);
+  const startThread = useChatStore((s) => s.startThread);
+  const [chatMeta, setChatMeta] = useState<ThreadMeta | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  const openChat = async () => {
+    if (!listing.sellerId || opening) return;
+    setOpening(true);
+    const meta = await startThread({
+      listingId: listing.id,
+      title: listing.name,
+      image: listing.image,
+      sellerId: listing.sellerId,
+      sellerName: listing.seller,
+    });
+    setOpening(false);
+    if (meta) setChatMeta(meta);
+  };
   const swatch = swatchOf(listing.color);
   const canSwap = listing.mode !== "sell";
   const canBuy = listing.mode !== "swap";
@@ -92,24 +109,24 @@ export function MarketCard({
         {bundle && <p className="text-[11px] text-zinc-500">{bundle.onlyTogether ? t("bundle_onlyTogether") : t("bundle_alsoSingle")}</p>}
         {!compact && !listing.mine && (
           <>
-            <button
-              onClick={() => setChatOpen(true)}
-              className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-accent/20 text-sm font-semibold text-accent-soft ring-1 ring-accent/30 transition active:scale-[0.98]"
-            >
-              <MessageCircle className="h-4 w-4" /> {t("chat_contact")}
-            </button>
-            <ChatDialog
-              open={chatOpen}
-              onOpenChange={setChatOpen}
-              meta={{
-                id: `t-${listing.id}`,
-                listingId: listing.id,
-                title: listing.name,
-                image: listing.image,
-                counterpart: listing.seller,
-                role: "buyer",
-              }}
-            />
+            {listing.sellerId ? (
+              <button
+                onClick={() => void openChat()}
+                disabled={opening}
+                className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-accent/20 text-sm font-semibold text-accent-soft ring-1 ring-accent/30 transition active:scale-[0.98] disabled:opacity-60"
+              >
+                <MessageCircle className="h-4 w-4" /> {t("chat_contact")}
+              </button>
+            ) : (
+              // Beispiel-Angebote haben keinen echten Anbieter -> kein Chat
+              <button
+                disabled
+                className="mt-2 flex h-9 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl bg-white/5 text-sm font-medium text-zinc-500"
+              >
+                <MessageCircle className="h-4 w-4" /> {t("chat_demo")}
+              </button>
+            )}
+            {chatMeta && <ChatDialog meta={chatMeta} open onOpenChange={(o) => !o && setChatMeta(null)} />}
           </>
         )}
       </div>
