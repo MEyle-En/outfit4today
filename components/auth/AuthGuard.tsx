@@ -8,6 +8,8 @@ import { warmupBackgroundRemoval } from "@/lib/utils/backgroundRemover";
 import { translate } from "@/lib/i18n/translate";
 import { toast } from "@/lib/store/useToastStore";
 import { clearPendingJoin, getPendingJoin } from "@/lib/utils/pendingJoin";
+import { getMyAvatarUrl } from "@/lib/supabase-account";
+import { useProfileStore } from "@/lib/store/useProfileStore";
 import { ensureProfile } from "@/lib/supabase-social";
 import { useCrewStore } from "@/lib/store/useCrewStore";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
@@ -40,7 +42,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   let target: string | null = null;
   // Rechtstexte und die Passwort-Reset-Seite (Nutzer kommt mit Recovery-Sitzung aus der E-Mail) nie umleiten
   const isLegal =
-    pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password" || pathname.startsWith("/join/");
+    pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password" ||
+    pathname === "/account-deletion" || pathname.startsWith("/join/");
   if (hydrated && authReady && !isLegal) {
     if (!isAuthenticated) target = pathname === "/login" ? null : "/login";
     else if (pathname === "/login") target = onboarded ? "/" : "/vibe-check";
@@ -77,6 +80,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const me = useAuthStore.getState().user;
     // Erst das Profil sicherstellen (sonst fehlen Namen in Mitglieder- und Post-Listen), dann Crews laden
     void (me ? ensureProfile(me) : Promise.resolve())
+      .then(async () => {
+        if (useProfileStore.getState().avatar) return;
+        const url = await getMyAvatarUrl().catch(() => null);
+        if (url && !cancelled) useProfileStore.getState().setAvatar(url);
+      })
       .then(() => useCrewStore.getState().loadCrews())
       .then(async () => {
         // Einladungslink vor dem Login geöffnet? Genau einmal beitreten, Eintrag sofort löschen (kein Re-Join bei Reload)

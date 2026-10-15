@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, FileText, Heart, LogOut, Shield, RotateCcw, Shirt, Sparkles, Trash2, User, Volume2, VolumeX } from "lucide-react";
+import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { ImageCropper } from "@/components/profile/ImageCropper";
+import { uploadAvatar } from "@/lib/supabase-account";
+import { toast } from "@/lib/store/useToastStore";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
 import { MyListings } from "@/components/market/MyListings";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +74,7 @@ export default function ProfilePage() {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -203,6 +207,13 @@ export default function ProfilePage() {
           onCancel={() => setCropSrc(null)}
           onDone={(dataUrl) => {
             setAvatar(dataUrl);
+            // Zusätzlich in die Cloud, damit Crew-Mitglieder das Bild sehen; bei Fehler bleibt es lokal erhalten
+            uploadAvatar(dataUrl)
+              .then((url) => setAvatar(url))
+              .catch((e) => {
+                console.error("Avatar-Upload fehlgeschlagen:", e);
+                toast(t("avatar_errUpload"), t("avatar_errUploadHint"), "error");
+              });
             setCropSrc(null);
           }}
         />
@@ -355,12 +366,24 @@ export default function ProfilePage() {
           <Trash2 className="h-4 w-4" /> {confirmDelete ? t("profile_deleteConfirm") : t("profile_deleteAll")}
         </Button>
 
+        <Button
+          variant="glass"
+          className="w-full justify-start border-red-400/40 text-red-300 hover:text-red-200"
+          onClick={() => setDeleteAccountOpen(true)}
+        >
+          <Trash2 className="h-4 w-4" /> {t("account_deleteBtn")}
+        </Button>
+        <DeleteAccountDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen} />
+
         <div className="flex flex-col gap-1 pt-2 text-sm text-zinc-400">
           <Link href="/privacy" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
             <Shield className="h-4 w-4" /> {t("legal_privacyFull")}
           </Link>
           <Link href="/imprint" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
             <FileText className="h-4 w-4" /> {t("legal_imprint")}
+          </Link>
+          <Link href="/account-deletion" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
+            <Trash2 className="h-4 w-4" /> {t("account_pageLink")}
           </Link>
         </div>
       </section>

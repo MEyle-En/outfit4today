@@ -6,7 +6,6 @@ import { Logo } from "@/components/brand/Logo";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { useHydrated } from "@/hooks/useHydrated";
 import { LANGS } from "@/lib/i18n/translations";
 import { useLangStore } from "@/lib/store/useLangStore";
@@ -36,7 +35,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         {pathname !== "/" && <Logo size={32} className="mb-5" />}
         {children}
       </div>
-      <InstallBanner />
       <BottomNav />
     </>
   );

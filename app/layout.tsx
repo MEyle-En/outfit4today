@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Caveat, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { Toaster } from "@/components/ui/Toaster";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <Toaster />
         <PwaRegister />
+        <InstallBanner />
       </body>
     </html>
   );

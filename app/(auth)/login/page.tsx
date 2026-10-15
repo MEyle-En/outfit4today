@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/hooks/useTranslation";
 import Link from "next/link";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
+import { consumeAccountDeletedFlag } from "@/lib/supabase-account";
 import { getPendingJoin } from "@/lib/utils/pendingJoin";
 import { MIN_PASSWORD, useAuthStore } from "@/lib/store/useAuthStore";
 import { toast } from "@/lib/store/useToastStore";
@@ -78,6 +79,7 @@ export default function LoginPage() {
   // Rückkehr vom Anbieter mit Fehler (z. B. Google in Supabase nicht aktiviert / abgebrochen): Meldung zeigen
   useEffect(() => {
     setPendingJoinState(!!getPendingJoin()); // Einladungslink geöffnet -> Hinweis zeigen
+    if (consumeAccountDeletedFlag()) toast(t("account_deletedToast"));
     const params = new URLSearchParams(window.location.search + "&" + window.location.hash.replace(/^#/, ""));
     if (params.get("error") || params.get("error_description")) {
       let provider = "google";
