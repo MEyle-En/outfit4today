@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail } from "lucide-react";
+import { LEGAL } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Kontakt / Contact" };
 
-const SUPPORT = "support@outfit4today.com"; // Platzhalter, später anpassen
+const SUPPORT = LEGAL.supportEmail;
 
 /** Öffentliche Kontaktseite für Support und Moderation (DE + EN). */
 export default function ContactPage() {

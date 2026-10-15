@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LEGAL } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Nutzungsbedingungen / Terms of Use" };
 
-const SUPPORT = "support@outfit4today.com"; // Platzhalter, später anpassen
+const SUPPORT = LEGAL.supportEmail;
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <section className="mb-5 space-y-2">

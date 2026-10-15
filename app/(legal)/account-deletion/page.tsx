@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { LEGAL } from "@/lib/legal";
 import { Trash2 } from "lucide-react";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 
-const SUPPORT = "kontakt@zovai.at";
+const SUPPORT = LEGAL.email;
 
 /** Öffentliche Seite zur Kontolöschung (für Store-Formulare). Ohne Login erreichbar, zweisprachig. */
 export default function AccountDeletionPage() {
