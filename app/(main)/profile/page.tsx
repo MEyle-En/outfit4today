@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, FileText, Heart, LogOut, Shield, RotateCcw, Shirt, Sparkles, Trash2, User, Volume2, VolumeX } from "lucide-react";
+import { BlockedUsersDialog } from "@/components/moderation/BlockedUsersDialog";
+import { useModerationStore } from "@/lib/store/useModerationStore";
+import { Ban, Mail, ScrollText } from "lucide-react";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { ImageCropper } from "@/components/profile/ImageCropper";
 import { uploadAvatar } from "@/lib/supabase-account";
@@ -75,6 +78,8 @@ export default function ProfilePage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
+  const blockedCount = useModerationStore((s) => s.blocked.length);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -366,6 +371,11 @@ export default function ProfilePage() {
           <Trash2 className="h-4 w-4" /> {confirmDelete ? t("profile_deleteConfirm") : t("profile_deleteAll")}
         </Button>
 
+        <Button variant="glass" className="w-full justify-start" onClick={() => setBlockedOpen(true)}>
+          <Ban className="h-4 w-4" /> {t("blocked_title")}
+          {blockedCount > 0 ? " (" + blockedCount + ")" : ""}
+        </Button>
+        <BlockedUsersDialog open={blockedOpen} onOpenChange={setBlockedOpen} />
         <Button
           variant="glass"
           className="w-full justify-start border-red-400/40 text-red-300 hover:text-red-200"
@@ -384,6 +394,12 @@ export default function ProfilePage() {
           </Link>
           <Link href="/account-deletion" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
             <Trash2 className="h-4 w-4" /> {t("account_pageLink")}
+          </Link>
+          <Link href="/terms" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
+            <ScrollText className="h-4 w-4" /> {t("legal_terms")}
+          </Link>
+          <Link href="/contact" className="flex items-center gap-2 rounded-xl px-2 py-2 hover:text-white">
+            <Mail className="h-4 w-4" /> {t("support_line")}
           </Link>
         </div>
       </section>

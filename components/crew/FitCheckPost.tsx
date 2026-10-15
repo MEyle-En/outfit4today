@@ -2,7 +2,12 @@
 
 import { useRef, useState } from "react";
 import { ItemImage } from "@/components/wardrobe/ItemImage";
-import { ArrowLeftRight, Bookmark, Globe, MessageCircle, Send, Trash2 } from "lucide-react";
+import { ArrowLeftRight, Ban, Bookmark, Flag, Globe, MessageCircle, Send, Trash2 } from "lucide-react";
+import { BlockDialog } from "@/components/moderation/BlockDialog";
+import { KebabMenu } from "@/components/moderation/KebabMenu";
+import { ReportDialog } from "@/components/moderation/ReportDialog";
+import { useModerationStore } from "@/lib/store/useModerationStore";
+import type { ReportTarget } from "@/lib/supabase-moderation";
 import { FitPreview } from "@/components/crew/FitPreview";
 import { SwapDialog } from "@/components/crew/SwapDialog";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +94,11 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
   const [confirmDelete, setConfirmDelete] = useState(false);
   const commentRef = useRef<HTMLInputElement>(null);
   const isMine = !!meId && post.authorId === meId;
+  const blocked = useModerationStore((s) => s.blocked);
+  const [report, setReport] = useState<{ type: ReportTarget; id: string } | null>(null);
+  const [blockTarget, setBlockTarget] = useState<string | null>(null);
+  // Kommentare blockierter Nutzer sind für mich ausgeblendet
+  const visibleComments = post.comments.filter((c) => !blocked.includes(c.authorId));
   const inspired = !!meId && post.reactions.idea.includes(meId);
 
   return (
@@ -140,6 +150,16 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
             <Trash2 className="h-3.5 w-3.5" /> {confirmDelete && t("post_deleteConfirm")}
           </button>
         )}
+        {/* Fremde Posts: Menü mit Melden und Blockieren */}
+        {!isMine && (
+          <KebabMenu
+            label={t("mod_menu")}
+            items={[
+              { label: t("report_postItem"), icon: <Flag className="h-4 w-4" />, onSelect: () => setReport({ type: "post", id: post.id }) },
+              { label: t("mod_block"), icon: <Ban className="h-4 w-4" />, danger: true, onSelect: () => setBlockTarget(post.authorId) },
+            ]}
+          />
+        )}
       </header>
 
       <FitPreview layers={post.layers} />
@@ -186,7 +206,7 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
             className="icon-btn flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm"
           >
             <MessageCircle className="h-4 w-4" />
-            <span className="text-xs tabular-nums">{post.comments.length}</span>
+            <span className="text-xs tabular-nums">{visibleComments.length}</span>
           </button>
         </Tip>
 
@@ -197,9 +217,9 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
         )}
       </div>
 
-      {post.comments.length > 0 && (
+      {visibleComments.length > 0 && (
         <ul className="space-y-2">
-          {post.comments.map((c) => (
+          {visibleComments.map((c) => (
             <li key={c.id} className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 {c.kind === "swap" && c.swap ? (
@@ -210,6 +230,18 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
                   </p>
                 )}
               </div>
+              {/* Fremde Kommentare: melden */}
+              {!!meId && c.authorId !== meId && (
+                <button
+                  type="button"
+                  aria-label={t("report_commentItem")}
+                  title={t("report_commentItem")}
+                  onClick={() => setReport({ type: "comment", id: c.id })}
+                  className="shrink-0 rounded-full bg-white/5 p-1.5 text-zinc-400 hover:text-white"
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                </button>
+              )}
               {/* Nur eigene Kommentare: zweiter Tipp bestätigt (die Datenbank erzwingt das zusätzlich) */}
               {!!meId && c.authorId === meId && (
                 <button
@@ -263,6 +295,8 @@ export function FitCheckPost({ post, index = 0 }: { post: FitPost; index?: numbe
       </form>
 
       {!isMine && <SwapDialog key={swapOpen ? "open" : "closed"} post={post} open={swapOpen} onOpenChange={setSwapOpen} />}
+      <ReportDialog target={report} onClose={() => setReport(null)} />
+      <BlockDialog userId={blockTarget} name={nameOf(post.authorId)} onClose={() => setBlockTarget(null)} />
     </article>
   );
 }

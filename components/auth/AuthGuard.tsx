@@ -12,6 +12,7 @@ import { getMyAvatarUrl } from "@/lib/supabase-account";
 import { useProfileStore } from "@/lib/store/useProfileStore";
 import { ensureProfile } from "@/lib/supabase-social";
 import { useCrewStore } from "@/lib/store/useCrewStore";
+import { useModerationStore } from "@/lib/store/useModerationStore";
 import { startWardrobeSync } from "@/lib/supabase-wardrobe";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
@@ -43,7 +44,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // Rechtstexte und die Passwort-Reset-Seite (Nutzer kommt mit Recovery-Sitzung aus der E-Mail) nie umleiten
   const isLegal =
     pathname === "/privacy" || pathname === "/imprint" || pathname === "/reset-password" ||
-    pathname === "/account-deletion" || pathname.startsWith("/join/");
+    pathname === "/account-deletion" ||
+    pathname === "/terms" ||
+    pathname === "/contact" || pathname.startsWith("/join/");
   if (hydrated && authReady && !isLegal) {
     if (!isAuthenticated) target = pathname === "/login" ? null : "/login";
     else if (pathname === "/login") target = onboarded ? "/" : "/vibe-check";
@@ -85,6 +88,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         const url = await getMyAvatarUrl().catch(() => null);
         if (url && !cancelled) useProfileStore.getState().setAvatar(url);
       })
+      .then(() => useModerationStore.getState().load())
       .then(() => useCrewStore.getState().loadCrews())
       .then(async () => {
         // Einladungslink vor dem Login geöffnet? Genau einmal beitreten, Eintrag sofort löschen (kein Re-Join bei Reload)
@@ -104,6 +108,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
       useCrewStore.getState().resetCloud();
+      useModerationStore.getState().reset();
     };
   }, [userId, router]);
 

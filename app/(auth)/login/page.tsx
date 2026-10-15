@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [pendingJoin, setPendingJoinState] = useState(false);
+  const [consent, setConsent] = useState(false); // nur UI-Gate, wird nicht gespeichert
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -60,6 +61,7 @@ export default function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (mode === "register" && !consent) return;
     setSubmitted(true);
     setAuthError(null);
     if (!EMAIL_RE.test(email.trim())) return;
@@ -218,13 +220,34 @@ export default function LoginPage() {
             <TabsContent value="register">{fields}</TabsContent>
           </Tabs>
 
+          {mode === "register" && (
+            <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[#a855f7]"
+              />
+              <span>
+                {t("consent_prefix")}{" "}
+                <Link href="/terms" target="_blank" className="text-accent-soft underline">
+                  {t("legal_terms")}
+                </Link>{" "}
+                {t("consent_and")}{" "}
+                <Link href="/privacy" target="_blank" className="text-accent-soft underline">
+                  {t("legal_privacy")}
+                </Link>
+              </span>
+            </label>
+          )}
+
           {authError && (
             <p role="alert" className="rounded-xl bg-red-500/10 px-3 py-2 text-center text-sm text-red-400">
               {authError}
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>
+          <Button type="submit" size="lg" className="w-full" disabled={busy || (mode === "register" && !consent)}>
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t("auth_continue")}
           </Button>
         </form>
@@ -256,6 +279,8 @@ export default function LoginPage() {
         <p className="flex justify-center gap-4 text-xs text-zinc-500">
           <Link href="/privacy" className="hover:text-white">{t("legal_privacy")}</Link>
           <Link href="/imprint" className="hover:text-white">{t("legal_imprint")}</Link>
+          <Link href="/terms" className="hover:text-white">{t("legal_terms")}</Link>
+          <Link href="/contact" className="hover:text-white">{t("legal_contact")}</Link>
         </p>
       </div>
     {showPasswordReset && (

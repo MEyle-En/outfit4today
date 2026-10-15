@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryPicker } from "@/components/wardrobe/CategoryPicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categoryLabel, useCategoryOptions } from "@/lib/categories";
+import { MembersDialog } from "@/components/moderation/MembersDialog";
+import { useModerationStore } from "@/lib/store/useModerationStore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCrewItems } from "@/lib/supabase-crews";
 import { useAuthStore } from "@/lib/store/useAuthStore";
@@ -131,6 +133,8 @@ export function CrewView() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const blocked = useModerationStore((s) => s.blocked);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [crewItems, setCrewItems] = useState<FriendItem[]>([]);
   const [copied, setCopied] = useState(false);
@@ -150,14 +154,14 @@ export function CrewView() {
   );
 
   const publicPosts = useMemo(
-    () => allPosts.filter((p) => p.isPublic).sort((a, b) => b.createdAt - a.createdAt),
-    [allPosts],
+    () => allPosts.filter((p) => p.isPublic && !blocked.includes(p.authorId)).sort((a, b) => b.createdAt - a.createdAt),
+    [allPosts, blocked],
   );
 
   const crew = crews.find((c) => c.id === activeCrewId) ?? crews[0];
   const posts = useMemo(
-    () => allPosts.filter((p) => p.crewId === crew?.id).sort((a, b) => b.createdAt - a.createdAt),
-    [allPosts, crew?.id],
+    () => allPosts.filter((p) => p.crewId === crew?.id && !blocked.includes(p.authorId)).sort((a, b) => b.createdAt - a.createdAt),
+    [allPosts, crew?.id, blocked],
   );
   const members = useCrewStore((s) => (crew ? s.members[crew.id] : undefined)) ?? NO_MEMBERS;
   const memberName = (id: string) => (id === meId ? t("crew_you") : members.find((m) => m.id === id)?.name ?? "");
@@ -190,9 +194,10 @@ export function CrewView() {
   const friendItems = useMemo(
     () =>
       crewItems.filter(
-        (i) => (owner === "all" || i.ownerId === owner) && (category === "all" || i.category === category),
+        (i) =>
+          !blocked.includes(i.ownerId) && (owner === "all" || i.ownerId === owner) && (category === "all" || i.category === category),
       ),
-    [crewItems, owner, category],
+    [crewItems, owner, category, blocked],
   );
 
   const copy = async () => {
@@ -238,12 +243,13 @@ export function CrewView() {
       </div>
       <CreateCrewDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinCrewDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} members={members} />
       {!crewsLoaded && crews.length === 0 && <Skeleton className="h-24 w-full" />}
 
       {crew && (
         <div className="glass space-y-3 rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <div className="flex -space-x-2">
+            <button type="button" onClick={() => setMembersOpen(true)} aria-label={t("members_title")} className="flex -space-x-2">
               {members.slice(0, 8).map((m) =>
                 m.avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -252,7 +258,7 @@ export function CrewView() {
                   <div key={m.id} title={memberName(m.id)} className={cn("h-8 w-8 rounded-full border-2 border-surface bg-gradient-to-br", m.gradient)} />
                 ),
               )}
-            </div>
+            </button>
             <span className="text-xs text-zinc-500">{t("crew_members", { n: crew.memberIds.length })}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -329,7 +335,7 @@ export function CrewView() {
           ) : (
             <>
               <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-                {[{ id: "all", name: t("all") }, ...members.filter((m) => m.id !== meId)].map((f) => (
+                {[{ id: "all", name: t("all") }, ...members.filter((m) => m.id !== meId && !blocked.includes(m.id))].map((f) => (
                   <button
                     key={f.id}
                     onClick={() => setOwner(f.id)}
