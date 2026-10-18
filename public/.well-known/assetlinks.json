@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.outfit4Today.app",
+    "sha256_cert_fingerprints": [
+      "96:5F:9B:76:B2:BF:DF:B7:E0:5C:7B:73:45:A6:E7:96:16:F1:DA:2A:2C:79:04:77:79:33:07:E7:19:DF:7B:6A"
+    ]
+  }
+}]
