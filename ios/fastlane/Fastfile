@@ -1,0 +1,22 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight via GitHub Actions"
+  lane :ci_build_and_upload do
+    
+    # 1. Zertifikate aus dem certs-Repo holen/erzeugen
+    match(type: "appstore", readonly: false)
+    
+    # 2. Build erzeugen (xcodebuild wird aufgerufen)
+    build_app(
+      scheme: "App",                  # Capacitor nutzt standardmäßig "App"
+      clean: true,                    # Sauberer Build
+      export_method: "app-store",     # Wichtig für TestFlight
+      skip_provisioning_profiles: false
+    )
+    
+    # 3. Zu TestFlight hochladen
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+    
+  end
+end

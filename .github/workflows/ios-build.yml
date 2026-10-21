@@ -1,0 +1,52 @@
+name: iOS Build & Upload to TestFlight
+
+on:
+  workflow_dispatch: # Ermöglicht manuellen Start im Browser
+  push:
+    branches: [ main ] # Oder wenn du nur manuell starten willst, lösch diese Zeile später
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest # Der Cloud-Mac von GitHub
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+        working-directory: ./ios
+
+      - name: Restore CocoaPods cache
+        uses: actions/cache@v3
+        with:
+          path: ./ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Run Pod Install
+        run: pod install
+        working-directory: ./ios
+
+      - name: Set up environment variables for Match
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          GH_TOKEN_FOR_MATCH: ${{ secrets.MATCH_REPO_TOKEN }}
+        run: echo "MATCH_PASSWORD=$MATCH_PASSWORD" >> $GITHUB_ENV && echo "GH_TOKEN_FOR_MATCH=$GH_TOKEN_FOR_MATCH" >> $GITHUB_ENV
+
+      - name: Run Fastlane ci_build_and_upload
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          GH_TOKEN_FOR_MATCH: ${{ secrets.MATCH_REPO_TOKEN }}
+        run: bundle exec fastlane ios ci_build_and_upload
+        working-directory: ./ios

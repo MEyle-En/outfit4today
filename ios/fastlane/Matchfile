@@ -1,0 +1,8 @@
+git_url("https://github.com/MEyle-En/outfit4today-certs.git")
+storage_mode("git")
+type("appstore")                      # Für den Store/TestFlight
+platform("ios")
+readonly(false)                       # Erlaubt Erzeugung neuer Certs falls nötig
+keychain_name("match.keychain")       # Standard-Name für CI
+force_for_new_devices(true)           # Falls neue Geräte getestet werden sollen
+verbose(true)                         # Mehr Logs zur Fehlersuche
