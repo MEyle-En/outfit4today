@@ -1,0 +1,11 @@
+{
+  "appId": "www.Emel.Outfit4Today",
+  "appName": "Outfit4Today",
+  "webDir": "out",
+  "server": {
+    "url": "https://outfit4today.vercel.app"
+  },
+  "ios": {
+    "contentInset": "never"
+  }
+}
