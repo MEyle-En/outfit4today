@@ -31,8 +31,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
+      - name: Setup Node.js for Cap Sync
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate iOS Project Files (Capacitor)
+        run: npx cap sync ios
+        working-directory: ./
+
       - name: Run Pod Install
-        run: pod install
+        run: pod install --repo-update
         working-directory: ./ios
 
       - name: Set up environment variables for Match
