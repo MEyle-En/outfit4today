@@ -36,8 +36,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Capacitor CLI globally
+        run: npm install -g @capacitor/cli
+
       - name: Generate iOS Project Files (Capacitor)
-        run: npx cap sync ios
+        run: cap sync ios
         working-directory: ./
 
       - name: Run Pod Install
