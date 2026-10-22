@@ -39,6 +39,10 @@ jobs:
       - name: Install Capacitor CLI globally
         run: npm install -g @capacitor/cli
 
+      - name: Install project dependencies (npm ci)
+        run: npm ci
+        working-directory: ./
+
       - name: Generate iOS Project Files (Capacitor)
         run: cap sync ios
         working-directory: ./
