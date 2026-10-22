@@ -3,20 +3,34 @@ default_platform(:ios)
 platform :ios do
   desc "Build and upload to TestFlight via GitHub Actions"
   lane :ci_build_and_upload do
-    
-    # 1. Zertifikate aus dem certs-Repo holen/erzeugen
-    match(type: "appstore", readonly: false)
-    
-    # 2. Build erzeugen (xcodebuild wird aufgerufen)
-    build_app(
-      scheme: "App",                  # Capacitor nutzt standardmäßig "App"
-      clean: true,                    # Sauberer Build
-      export_method: "app-store",     # Wichtig für TestFlight
-      skip_provisioning_profiles: false
+
+    # CI-Keychain anlegen (verhindert Passwort-Prompts auf dem Mac-Runner)
+    setup_ci
+
+    # Apple-API-Key aus den GitHub-Secrets bauen
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_PRIVATE_KEY"],
+      is_key_content_base64: false,
+      in_house: false
     )
-    
+
+    # 1. Zertifikate aus dem certs-Repo holen/erzeugen
+    match(type: "appstore", readonly: false, api_key: api_key)
+
+    # 2. Build erzeugen
+    build_app(
+      scheme: "App",
+      clean: true,
+      export_method: "app-store"
+    )
+
     # 3. Zu TestFlight hochladen
-    upload_to_testflight(skip_waiting_for_build_processing: true)
-    
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+
   end
 end
