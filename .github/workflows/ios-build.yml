@@ -47,7 +47,7 @@ jobs:
         run: cap sync ios
         working-directory: ./
 
-      -      - name: Run Pod Install
+      - name: Run Pod Install
         run: |
           cd ios
           ls -la # Debugging: Zeigt uns, ob die Podfile da ist
