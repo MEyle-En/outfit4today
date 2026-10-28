@@ -1,4 +1,2 @@
-app_identifier("www.Emel.Outfit4Today") # Deine Bundle-ID!
-apple_id(nil)                          # Wird durch API-Key ersetzt
-itc_team_id(nil)                       # Optional, meist nicht nötig bei Einzelkonten
-team_id(nil)                           # Optional
+﻿app_identifier("-www.Emel.Outfit4Today")
+apple_id("emel.can@outfit4today.com")
