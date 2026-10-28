@@ -7,10 +7,6 @@ workflows:
       node: 20
       groups:
         - appstore_credentials
-      vars:
-        BUNDLE_ID: "-www.Emel.Outfit4Today"
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
-        XCODE_SCHEME: "App"
     scripts:
       - name: Install npm dependencies
         script: npm install
@@ -22,15 +18,20 @@ workflows:
         script: keychain initialize
       - name: Fetch signing files (create if missing)
         script: |
+          BUNDLE_ID="-www.Emel.Outfit4Today"
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
       - name: Add certificates to keychain
         script: keychain add-certificates
       - name: Use provisioning profiles
-        script: xcode-project use-profiles "$BUNDLE_ID"
+        script: |
+          BUNDLE_ID="-www.Emel.Outfit4Today"
+          xcode-project use-profiles "$BUNDLE_ID"
       - name: Build IPA
         script: |
+          XCODE_WORKSPACE="ios/App/App.xcworkspace"
+          XCODE_SCHEME="App"
           xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
