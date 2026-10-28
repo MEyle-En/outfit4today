@@ -4,7 +4,7 @@ platform :ios do
   desc "Build and upload to TestFlight via GitHub Actions"
   lane :ci_build_and_upload do
 
-    # CI-Keychain anlegen (verhindert Passwort-Prompts auf dem Mac-Runner)
+    # CI-Keychain anlegen (verhindert Passwort-Prompts)
     setup_ci
 
     # Apple-API-Key aus den GitHub-Secrets bauen
@@ -17,13 +17,22 @@ platform :ios do
     )
 
     # 1. Zertifikate aus dem certs-Repo holen/erzeugen
-    match(type: "appstore", readonly: false, api_key: api_key)
+    # WICHTIG: force:true + readonly:false macht es non-interactive
+    match(
+      type: "appstore",
+      readonly: false,
+      force: true,              # Keine Rückfragen, einfach machen
+      skip_confirmation: true,  # Bestätigungen automatisch annehmen
+      api_key: api_key,
+      verbose: true
+    )
 
     # 2. Build erzeugen
     build_app(
       scheme: "App",
       clean: true,
-      export_method: "app-store"
+      export_method: "app-store",
+      force: true
     )
 
     # 3. Zu TestFlight hochladen
