@@ -7,6 +7,9 @@ workflows:
       node: 20
       groups:
         - appstore_credentials
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: "-www.Emel.Outfit4Today"
     scripts:
       - name: Install npm dependencies
         script: npm install
@@ -25,7 +28,7 @@ workflows:
       - name: Add certificate to keychain
         script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
       - name: Use provisioning profile
-        script: xcode-project use-profiles -- "-www.Emel.Outfit4Today"
+        script: xcode-project use-profiles
       - name: Build IPA
         script: xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
     artifacts:
