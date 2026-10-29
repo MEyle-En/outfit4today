@@ -16,11 +16,15 @@ workflows:
         script: npx cap sync ios
       - name: Set up keychain
         script: keychain initialize
-      - name: Fetch signing files (diagnose)
-        script: app-store-connect fetch-signing-files --type IOS_APP_STORE --create --log-api-calls -- "-www.Emel.Outfit4Today"
-      - name: Add certificates to keychain
-        script: keychain add-certificates
-      - name: Use provisioning profiles
+      - name: Decode certificate and provisioning profile
+        script: |
+          echo "$O4T_P12_BASE64" | base64 --decode > /tmp/dist.p12
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$O4T_PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/o4t-appstore.mobileprovision"
+          ls -la /tmp/dist.p12 "$HOME/Library/MobileDevice/Provisioning Profiles"
+      - name: Add certificate to keychain
+        script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
+      - name: Use provisioning profile
         script: xcode-project use-profiles
       - name: Build IPA
         script: xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
