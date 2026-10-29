@@ -7,9 +7,6 @@ workflows:
       node: 20
       groups:
         - appstore_credentials
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: "-www.Emel.Outfit4Today"
     scripts:
       - name: Install npm dependencies
         script: npm install
@@ -27,8 +24,21 @@ workflows:
           ls -la /tmp/dist.p12 "$HOME/Library/MobileDevice/Provisioning Profiles"
       - name: Add certificate to keychain
         script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
-      - name: Use provisioning profile
-        script: xcode-project use-profiles
+      - name: Apply manual signing settings to Xcode project
+        script: |
+          set -e
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/o4t-appstore.mobileprovision"
+          /usr/bin/security cms -D -i "$PROFILE_PATH" > /tmp/profile.plist
+          UUID=$(plutil -extract UUID raw /tmp/profile.plist)
+          NAME=$(plutil -extract Name raw /tmp/profile.plist)
+          echo "Profile NAME=$NAME UUID=$UUID"
+          cd ios/App
+          sed -i '' "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = \"Apple Distribution\"; DEVELOPMENT_TEAM = 6624786S9P; PROVISIONING_PROFILE_SPECIFIER = \"$NAME\";/" App.xcodeproj/project.pbxproj
+          if ! grep -q PROVISIONING_PROFILE_SPECIFIER App.xcodeproj/project.pbxproj; then
+            sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = /PROVISIONING_PROFILE_SPECIFIER = \"$NAME\"; CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = \"Apple Distribution\"; DEVELOPMENT_TEAM = 6624786S9P; PRODUCT_BUNDLE_IDENTIFIER = /" App.xcodeproj/project.pbxproj
+          fi
+          grep -n "PROVISIONING_PROFILE_SPECIFIER" App.xcodeproj/project.pbxproj || true
+          grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || true
       - name: Build IPA
         script: xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
     artifacts:
