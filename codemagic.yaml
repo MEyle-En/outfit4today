@@ -5,6 +5,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       node: 20
+      xcode: 16.4
       groups:
         - appstore_credentials
     scripts:
@@ -60,7 +61,15 @@ workflows:
           cat export_options.plist
           cd /Users/builder/clone
       - name: Build IPA
-        script: xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+        script: |
+          set +e
+          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "===== XCODEBUILD ERROR LINES ====="
+            grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
+          fi
+          exit $rc
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
