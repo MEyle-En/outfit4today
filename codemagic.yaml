@@ -63,7 +63,8 @@ workflows:
       - name: Build IPA
         script: |
           set +e
-          xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
+          cd ios/App
+          xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
           rc=$?
           if [ $rc -ne 0 ]; then
             echo "===== XCODEBUILD ERROR LINES ====="
@@ -72,6 +73,7 @@ workflows:
           exit $rc
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
