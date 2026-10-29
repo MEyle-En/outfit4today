@@ -24,7 +24,7 @@ workflows:
           ls -la /tmp/dist.p12 "$HOME/Library/MobileDevice/Provisioning Profiles"
       - name: Add certificate to keychain
         script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
-      - name: Apply manual signing settings to Xcode project
+      - name: Apply manual signing settings and create export options
         script: |
           set -e
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/o4t-appstore.mobileprovision"
@@ -37,8 +37,28 @@ workflows:
           if ! grep -q PROVISIONING_PROFILE_SPECIFIER App.xcodeproj/project.pbxproj; then
             sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = /PROVISIONING_PROFILE_SPECIFIER = \"$NAME\"; CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = \"Apple Distribution\"; DEVELOPMENT_TEAM = 6624786S9P; PRODUCT_BUNDLE_IDENTIFIER = /" App.xcodeproj/project.pbxproj
           fi
-          grep -n "PROVISIONING_PROFILE_SPECIFIER" App.xcodeproj/project.pbxproj || true
-          grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || true
+          cd /Users/builder
+          cat > export_options.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>6624786S9P</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>-www.Emel.Outfit4Today</key>
+              <string>$NAME</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+          cat export_options.plist
+          cd /Users/builder/clone
       - name: Build IPA
         script: xcode-project build-ipa --workspace "ios/App/App.xcworkspace" --scheme "App"
     artifacts:
