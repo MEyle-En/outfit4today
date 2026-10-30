@@ -66,12 +66,13 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Upload via Apple ID and app password
+      - name: Upload to App Store Connect and submit to TestFlight
         script: |
           app-store-connect publish \
             --path ios/App/build/ios/ipa/App.ipa \
-            --apple-id emel.seylen@gmail.com \
-            --password "$ASC_APP_PASSWORD" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --private-key @file:ios/signing/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
           rc=$?
