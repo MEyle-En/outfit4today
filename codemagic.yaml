@@ -60,7 +60,7 @@ workflows:
           EOF
           cat export_options.plist
           cd /Users/builder/clone
-      - name: Build IPA
+     - name: Build IPA
         script: |
           set +e
           cd ios/App
@@ -71,13 +71,15 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-    artifacts:
-      - ios/App/build/ios/ipa/*.ipa
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-    publishing:
+      - name: Prepare API key file
+        script: |
+          echo "$APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
+          chmod 600 /tmp/AuthKey.p8
+          ls -la /tmp/AuthKey.p8
+   publishing:
+         publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        api_key: /tmp/AuthKey.p8
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
