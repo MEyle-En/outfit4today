@@ -69,20 +69,12 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Verify ASC key file from repo
-        script: |
-          echo "=== erste 2 Zeilen ==="
-          head -2 ios/signing/AuthKey.p8
-          echo "=== letzte Zeile ==="
-          tail -1 ios/signing/AuthKey.p8
-          echo "=== ASC IDs (not secret) ==="; echo "KEY_ID=$APP_STORE_CONNECT_KEY_IDENTIFIER"; echo "ISSUER=$APP_STORE_CONNECT_ISSUER_ID
-          wc -c ios/signing/AuthKey.p8
       - name: Upload to App Store Connect and submit to TestFlight
         script: |
           app-store-connect publish \
             --path ios/App/build/ios/ipa/App.ipa \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id WSWHZ8YXJX \
+            --issuer-id fcc65e61-b5ec-492e-a793-28a0f41fdf1 \
             --private-key @file:ios/signing/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
