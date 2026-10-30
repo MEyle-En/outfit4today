@@ -75,7 +75,7 @@ workflows:
           head -2 ios/signing/AuthKey.p8
           echo "=== letzte Zeile ==="
           tail -1 ios/signing/AuthKey.p8
-          echo "=== Bytes ==="
+          echo "=== ASC IDs (not secret) ==="; echo "KEY_ID=$APP_STORE_CONNECT_KEY_IDENTIFIER"; echo "ISSUER=$APP_STORE_CONNECT_ISSUER_ID
           wc -c ios/signing/AuthKey.p8
       - name: Upload to App Store Connect and submit to TestFlight
         script: |
