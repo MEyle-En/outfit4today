@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       node: 20
-      xcode: 16.4
+      xcode: 26.6
       groups:
         - appstore_credentials
     scripts:
@@ -56,13 +56,22 @@ workflows:
           </plist>
           EOF
           cd /Users/builder/clone
+      - name: Bump version to 1.5 build 5
+        script: |
+          cd ios/App
+          sed -i '' 's/MARKETING_VERSION = [0-9.]*/MARKETING_VERSION = 1.5/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = 5/g' App.xcodeproj/project.pbxproj
+          plutil -replace CFBundleShortVersionString -string 1.5 App/Info.plist
+          plutil -replace CFBundleVersion -string 5 App/Info.plist
+          echo "=== SELF-CHECK (muss 1.5 und 5 zeigen) ==="
+          grep -m1 MARKETING_VERSION App.xcodeproj/project.pbxproj
+          grep -m1 CURRENT_PROJECT_VERSION App.xcodeproj/project.pbxproj
+          plutil -extract CFBundleShortVersionString raw App/Info.plist
+          plutil -extract CFBundleVersion raw App/Info.plist
+          cd /Users/builder/clone
       - name: Build IPA
         script: |
           cd ios/App
-          plutil -replace CFBundleVersion -string 5 App/Info.plist
-          sed -i '' 's/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = 5/g' App.xcodeproj/project.pbxproj
-          echo "=== SELF-CHECK Build-Nummer (muss 5 sein) ==="
-          plutil -extract CFBundleVersion raw App/Info.plist
           xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
           rc=$?
           if [ $rc -ne 0 ]; then
