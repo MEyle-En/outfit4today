@@ -83,7 +83,7 @@ workflows:
             --path ios/App/build/ios/ipa/App.ipa \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --private-key ios/signing/AuthKey.p8 \
+            --private-key @file:ios/signing/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
           rc=$?
