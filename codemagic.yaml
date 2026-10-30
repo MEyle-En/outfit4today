@@ -75,20 +75,16 @@ workflows:
           OUT=/tmp/AuthKey.p8
           if printf '%s' "$RAW" | grep -q -- '-----BEGIN'; then
             echo 'MODE: roher PEM in env var erkannt'
-            if printf '%s' "$RAW" | grep -q '\\n'; then
-              echo '  -> literale Backslash-n werden zu echten Umbruechen'
-              printf '%s' "$RAW" | sed 's/\\n/\n/g' > "$OUT"
-            else
-              printf '%s\n' "$RAW" > "$OUT"
-            fi
+            printf '%s' "$RAW" | sed 's/\\n/\n/g' > "$OUT"
           else
-            echo 'MODE: Base64 in env var angenommen -> dekodieren'
+            echo 'MODE: Base64 in env var erkannt -> dekodieren'
             printf '%s' "$RAW" | tr -d '[:space:]' | base64 --decode > "$OUT"
           fi
           chmod 600 "$OUT"
           echo '=== SELF-CHECK: erste 2 Zeilen ==='
           head -2 "$OUT"
-          echo '=== Byte-Count ==='
+          echo '=== letzte Zeile + Byte-Count ==='
+          tail -1 "$OUT"
           wc -c "$OUT"
       - name: Upload to App Store Connect and submit to TestFlight
         script: |
@@ -99,7 +95,9 @@ workflows:
             --private-key /tmp/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
-          echo "===== PUBLISH EXIT CODE: $? ====="
+          rc=$?
+          echo "===== PUBLISH EXIT CODE: $rc ====="
+          exit $rc
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
