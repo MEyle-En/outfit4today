@@ -71,18 +71,27 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Prepare API key file
+      - name: Decode ASC API key to file
         script: |
           echo "$APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
           chmod 600 /tmp/AuthKey.p8
-          ls -la /tmp/AuthKey.p8
+          echo "--- SELF-CHECK: erste Zeile der dekodierten Datei ---"
+          head -1 /tmp/AuthKey.p8
+          wc -c /tmp/AuthKey.p8
+      - name: Upload to App Store Connect and submit to TestFlight
+        script: |
+          set +e
+          app-store-connect publish \
+            --path ios/App/build/ios/ipa/App.ipa \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --private-key /tmp/AuthKey.p8 \
+            --testflight \
+            --max-build-processing-wait 0
+          rc=$?
+          echo "===== PUBLISH EXIT CODE: $rc ====="
+          exit $rc
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        api_key: /tmp/AuthKey.p8
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
