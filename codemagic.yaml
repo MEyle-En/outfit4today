@@ -69,30 +69,21 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Decode ASC API key to file (auto-detect)
+      - name: Verify ASC key file from repo
         script: |
-          RAW="$APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY"
-          OUT=/tmp/AuthKey.p8
-          if printf '%s' "$RAW" | grep -q -- '-----BEGIN'; then
-            echo 'MODE: roher PEM in env var erkannt'
-            printf '%s' "$RAW" | sed 's/\\n/\n/g' > "$OUT"
-          else
-            echo 'MODE: Base64 in env var erkannt -> dekodieren'
-            printf '%s' "$RAW" | tr -d '[:space:]' | base64 --decode > "$OUT"
-          fi
-          chmod 600 "$OUT"
-          echo '=== SELF-CHECK: erste 2 Zeilen ==='
-          head -2 "$OUT"
-          echo '=== letzte Zeile + Byte-Count ==='
-          tail -1 "$OUT"
-          wc -c "$OUT"
+          echo "=== erste 2 Zeilen ==="
+          head -2 ios/signing/AuthKey.p8
+          echo "=== letzte Zeile ==="
+          tail -1 ios/signing/AuthKey.p8
+          echo "=== Bytes ==="
+          wc -c ios/signing/AuthKey.p8
       - name: Upload to App Store Connect and submit to TestFlight
         script: |
           app-store-connect publish \
             --path ios/App/build/ios/ipa/App.ipa \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --private-key /tmp/AuthKey.p8 \
+            --private-key ios/signing/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
           rc=$?
