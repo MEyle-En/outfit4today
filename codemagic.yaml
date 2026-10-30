@@ -27,7 +27,6 @@ workflows:
         script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
       - name: Apply manual signing settings and create export options
         script: |
-          set -e
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/o4t-appstore.mobileprovision"
           /usr/bin/security cms -D -i "$PROFILE_PATH" > /tmp/profile.plist
           UUID=$(plutil -extract UUID raw /tmp/profile.plist)
@@ -62,7 +61,6 @@ workflows:
           cd /Users/builder/clone
       - name: Build IPA
         script: |
-          set +e
           cd ios/App
           xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
           rc=$?
@@ -71,16 +69,29 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Decode ASC API key to file
+      - name: Decode ASC API key to file (auto-detect)
         script: |
-          echo "$APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
-          chmod 600 /tmp/AuthKey.p8
-          echo "--- SELF-CHECK: erste Zeile der dekodierten Datei ---"
-          head -1 /tmp/AuthKey.p8
-          wc -c /tmp/AuthKey.p8
+          RAW="$APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY"
+          OUT=/tmp/AuthKey.p8
+          if printf '%s' "$RAW" | grep -q -- '-----BEGIN'; then
+            echo 'MODE: roher PEM in env var erkannt'
+            if printf '%s' "$RAW" | grep -q '\\n'; then
+              echo '  -> literale Backslash-n werden zu echten Umbruechen'
+              printf '%s' "$RAW" | sed 's/\\n/\n/g' > "$OUT"
+            else
+              printf '%s\n' "$RAW" > "$OUT"
+            fi
+          else
+            echo 'MODE: Base64 in env var angenommen -> dekodieren'
+            printf '%s' "$RAW" | tr -d '[:space:]' | base64 --decode > "$OUT"
+          fi
+          chmod 600 "$OUT"
+          echo '=== SELF-CHECK: erste 2 Zeilen ==='
+          head -2 "$OUT"
+          echo '=== Byte-Count ==='
+          wc -c "$OUT"
       - name: Upload to App Store Connect and submit to TestFlight
         script: |
-          set +e
           app-store-connect publish \
             --path ios/App/build/ios/ipa/App.ipa \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
@@ -88,9 +99,7 @@ workflows:
             --private-key /tmp/AuthKey.p8 \
             --testflight \
             --max-build-processing-wait 0
-          rc=$?
-          echo "===== PUBLISH EXIT CODE: $rc ====="
-          exit $rc
+          echo "===== PUBLISH EXIT CODE: $? ====="
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
