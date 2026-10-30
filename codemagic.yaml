@@ -22,16 +22,14 @@ workflows:
           echo "$O4T_P12_BASE64" | base64 --decode > /tmp/dist.p12
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "ios/signing/o4t-appstore.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/"
-          ls -la /tmp/dist.p12 "$HOME/Library/MobileDevice/Provisioning Profiles"
       - name: Add certificate to keychain
         script: keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$O4T_P12_PASSWORD"
       - name: Apply manual signing settings and create export options
         script: |
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/o4t-appstore.mobileprovision"
           /usr/bin/security cms -D -i "$PROFILE_PATH" > /tmp/profile.plist
-          UUID=$(plutil -extract UUID raw /tmp/profile.plist)
           NAME=$(plutil -extract Name raw /tmp/profile.plist)
-          echo "Profile NAME=$NAME UUID=$UUID"
+          echo "Profile NAME=$NAME"
           cd ios/App
           sed -i '' "s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual; CODE_SIGN_IDENTITY = \"Apple Distribution\"; DEVELOPMENT_TEAM = 6624786S9P; PROVISIONING_PROFILE_SPECIFIER = \"$NAME\";/" App.xcodeproj/project.pbxproj
           if ! grep -q PROVISIONING_PROFILE_SPECIFIER App.xcodeproj/project.pbxproj; then
@@ -57,7 +55,6 @@ workflows:
           </dict>
           </plist>
           EOF
-          cat export_options.plist
           cd /Users/builder/clone
       - name: Build IPA
         script: |
@@ -69,13 +66,12 @@ workflows:
             grep -rh "error:" /tmp/xcodebuild_logs/ 2>/dev/null | tail -40
           fi
           exit $rc
-      - name: Upload to App Store Connect and submit to TestFlight
+      - name: Upload via Apple ID and app password
         script: |
           app-store-connect publish \
             --path ios/App/build/ios/ipa/App.ipa \
-            --key-id WSWHZ8YXJX \
-            --issuer-id fcc65e61-b5ec-492e-a793-28a0f41fdf1 \
-            --private-key @file:ios/signing/AuthKey.p8 \
+            --apple-id emel.seylen@gmail.com \
+            --password "$ASC_APP_PASSWORD" \
             --testflight \
             --max-build-processing-wait 0
           rc=$?
