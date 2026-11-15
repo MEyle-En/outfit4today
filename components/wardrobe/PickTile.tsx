@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { ItemImage } from "@/components/wardrobe/ItemImage";
 import { cn } from "@/lib/utils";
+import type { ItemCategory, ItemColor } from "@/types";
 
 /** Bild-Kachel mit Name; lila Rahmen + Haken bei Auswahl. */
 export function PickTile({
@@ -9,6 +10,8 @@ export function PickTile({
   name,
   selected,
   onClick,
+  category,
+  color,
 }: {
   image?: string;
   /** Freigestelltes Teil: ohne Kasten zeigen */
@@ -16,6 +19,9 @@ export function PickTile({
   name: string;
   selected: boolean;
   onClick: () => void;
+  /** Für das Ersatzbild, falls das Foto nicht lädt */
+  category?: ItemCategory;
+  color?: ItemColor;
 }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={selected} className="group text-center">
@@ -26,7 +32,7 @@ export function PickTile({
           selected ? "border-accent ring-2 ring-accent/60" : "border-white/10 group-hover:border-white/30",
         )}
       >
-        {image && <ItemImage src={image} alt={name} transparent={transparent} className="h-full w-full" />}
+        {image && <ItemImage src={image} alt={name} category={category} color={color} transparent={transparent} className="h-full w-full" />}
         {selected && (
           <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-accent">
             <Check className="h-3 w-3" strokeWidth={3} />

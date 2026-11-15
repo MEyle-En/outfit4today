@@ -153,7 +153,7 @@ export function MyListings() {
   const items = useWardrobeStore((s) => s.items);
   const bundles = useBundleStore((s) => s.bundles);
   const [listOpen, setListOpen] = useState(false);
-  const listed = items.filter((i) => i.visibility.onMarketplace && i.listing);
+  const listed = items.filter((i) => !!i.listing); // auch Angebote nur für die Crew
   const empty = listed.length === 0 && bundles.length === 0;
 
   return (

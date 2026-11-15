@@ -89,7 +89,7 @@ export function TodayItem() {
     setOffer(null);
     // Wurde das Teil tatsächlich angeboten, ist es für heute erledigt -> weiter zum nächsten
     const now = useWardrobeStore.getState().items.find((i) => i.id === id);
-    if (now?.visibility.onMarketplace) markHandledToday(id);
+    if (now?.listing) markHandledToday(id);
   };
 
   return (

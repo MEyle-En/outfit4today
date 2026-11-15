@@ -36,6 +36,8 @@ export interface Visibility {
   onMarketplace: boolean;
   /** Im Fit Lab nutzbar (Standard: true) */
   availableInLab: boolean;
+  /** Nur diese Crews sehen das Teil. Leer/undefined = alle meine Crews (Verhalten wie bisher). */
+  crewIds?: string[];
 }
 
 export interface WardrobeItem {

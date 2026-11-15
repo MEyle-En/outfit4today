@@ -17,7 +17,8 @@ import { colorLabel } from "@/lib/colors";
 import { syncTag } from "@/lib/tags";
 import { toast } from "@/lib/store/useToastStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
-import { applyVisibility } from "@/lib/visibility";
+import { applyVisibility, offersAllowed } from "@/lib/visibility";
+import { useCrewStore } from "@/lib/store/useCrewStore";
 import { cn } from "@/lib/utils";
 import type { ItemCategory, ItemColor, Visibility, WardrobeItem } from "@/types";
 
@@ -53,12 +54,17 @@ export function EditItemDialog({
   const [mode, setMode] = useState<Mode>(item.listing ?? "sell");
   const [price, setPrice] = useState(item.price != null ? String(item.price) : "");
 
-  const needsPrice = vis.onMarketplace && mode !== "swap";
+  const crews = useCrewStore((s) => s.crews);
+  // Anbieten geht in der Crew und im Marketplace; in der Crew darf ein Teil auch nur gezeigt werden
+  const [showOnly, setShowOnly] = useState(!item.listing);
+  const canOffer = offersAllowed(vis);
+  const offering = canOffer && (vis.onMarketplace || !showOnly);
+  const needsPrice = offering && mode !== "swap";
   const priceOk = !needsPrice || (price !== "" && Number(price) > 0);
   const canSave = name.trim().length > 0 && priceOk;
 
   // Kanäle: Privat schließt Crew/Marketplace aus, Crew und Marketplace sind kombinierbar, Lab ist unabhängig
-  const CHANNELS: { key: keyof Visibility; label: string; desc: string; icon: typeof Users }[] = [
+  const CHANNELS: { key: Exclude<keyof Visibility, "crewIds">; label: string; desc: string; icon: typeof Users }[] = [
     { key: "isPrivate", label: t("vis_private"), desc: t("vis_privateDesc"), icon: EyeOff },
     { key: "sharedWithCrew", label: t("vis_crew"), desc: t("vis_crewDesc"), icon: Users },
     { key: "onMarketplace", label: t("vis_market"), desc: t("vis_marketDesc"), icon: ShoppingBag },
@@ -70,7 +76,7 @@ export function EditItemDialog({
     { id: "both", label: t("mode_both"), icon: Repeat },
   ];
 
-  const toggle = (key: keyof Visibility) => {
+  const toggle = (key: Exclude<keyof Visibility, "crewIds">) => {
     // Privat lässt sich nur einschalten (ausschalten = Crew oder Marketplace wählen)
     if (key === "isPrivate" && vis.isPrivate) return;
     setVis((v) => applyVisibility(v, { [key]: !v[key] }));
@@ -130,8 +136,9 @@ export function EditItemDialog({
     let tags = syncTag(item.tags, "category", categoryLabel(category));
     if (color) tags = syncTag(tags, "color", colorLabel(color));
     updateItem(item.id, { image: finalImage, hasTransparentBackground: transparent, name: name.trim(), category, color, size: validSize(category, size), tags });
-    setVisibility(item.id, vis); // Marketplace aus => Angebot wird zurückgezogen
-    if (vis.onMarketplace) setListing([item.id], mode, mode === "swap" ? undefined : Number(price));
+    setVisibility(item.id, vis); // weder Crew noch Marketplace => Angebot wird zurückgezogen
+    if (offering) setListing([item.id], mode, mode === "swap" ? undefined : Number(price), { marketplace: vis.onMarketplace, crewIds: vis.crewIds });
+    else if (item.listing) updateItem(item.id, { listing: undefined, price: undefined }); // "Nur zeigen"
     toast(t("toast_saved"));
     onOpenChange(false);
   };
@@ -275,18 +282,66 @@ export function EditItemDialog({
               })}
             </div>
 
-            {vis.onMarketplace && (
+            {vis.sharedWithCrew && crews.length > 0 && (
+              <div className="space-y-1.5 rounded-2xl bg-white/5 p-3">
+                <p className="text-xs font-semibold text-zinc-300">{t("vis_crewPick")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[{ id: "", name: t("vis_allCrews") }, ...crews].map((c) => {
+                    const on = c.id === "" ? !vis.crewIds?.length : !!vis.crewIds?.includes(c.id);
+                    return (
+                      <button
+                        key={c.id || "all"}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          setVis((v) => {
+                            if (c.id === "") return { ...v, crewIds: undefined };
+                            const cur = v.crewIds ?? [];
+                            const next = cur.includes(c.id) ? cur.filter((x) => x !== c.id) : [...cur, c.id];
+                            return { ...v, crewIds: next.length ? next : undefined };
+                          })
+                        }
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs font-medium",
+                          on ? "border-accent/60 bg-accent/20 text-white" : "border-white/10 bg-white/5 text-zinc-400",
+                        )}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {canOffer && (
               <div className="space-y-3 rounded-2xl bg-white/5 p-3">
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className={cn("grid gap-1.5", vis.onMarketplace ? "grid-cols-3" : "grid-cols-4")}>
+                  {!vis.onMarketplace && (
+                    <button
+                      type="button"
+                      onClick={() => setShowOnly(true)}
+                      aria-pressed={showOnly}
+                      className={cn(
+                        "flex items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold",
+                        showOnly ? "bg-accent/30 text-white ring-1 ring-accent/50" : "text-zinc-400",
+                      )}
+                    >
+                      {t("offer_none")}
+                    </button>
+                  )}
                   {MODES.map(({ id, label, icon: Icon }) => (
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setMode(id)}
-                      aria-pressed={mode === id}
+                      onClick={() => {
+                        setMode(id);
+                        setShowOnly(false);
+                      }}
+                      aria-pressed={offering && mode === id}
                       className={cn(
                         "flex items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold",
-                        mode === id ? "bg-accent/30 text-white ring-1 ring-accent/50" : "text-zinc-400",
+                        offering && mode === id ? "bg-accent/30 text-white ring-1 ring-accent/50" : "text-zinc-400",
                       )}
                     >
                       <Icon className="h-3.5 w-3.5" /> {label}

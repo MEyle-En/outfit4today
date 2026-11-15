@@ -10,6 +10,7 @@ import { PickTile } from "@/components/wardrobe/PickTile";
 import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "@/lib/store/useToastStore";
 import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
+import { useCrewStore } from "@/lib/store/useCrewStore";
 import { cn } from "@/lib/utils";
 
 type Mode = "swap" | "sell" | "both";
@@ -34,6 +35,10 @@ export function ListItemDialog({
   const [mode, setMode] = useState<Mode>(initialMode);
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [price, setPrice] = useState("");
+  // Wo anbieten? Öffentlicher Marketplace und/oder einzelne Crews
+  const crews = useCrewStore((s) => s.crews);
+  const [market, setMarket] = useState(true);
+  const [crewSel, setCrewSel] = useState<string[]>([]);
 
   const MODES: { id: Mode; label: string; icon: typeof Tag }[] = [
     { id: "swap", label: t("mode_swap"), icon: ArrowLeftRight },
@@ -41,15 +46,16 @@ export function ListItemDialog({
     { id: "both", label: t("mode_both"), icon: Repeat },
   ];
 
-  const available = items.filter((i) => !i.visibility.onMarketplace);
+  const available = items.filter((i) => !i.listing);
   const needsPrice = mode !== "swap";
   const priceValue = Number(price);
   const priceValid = !needsPrice || (price !== "" && priceValue > 0);
-  const canSubmit = selected.length > 0 && priceValid;
+  const hasPlace = market || crewSel.length > 0;
+  const canSubmit = selected.length > 0 && priceValid && hasPlace;
 
   const submit = () => {
     if (!canSubmit) return;
-    setListing(selected, mode, needsPrice ? priceValue : undefined);
+    setListing(selected, mode, needsPrice ? priceValue : undefined, { marketplace: market, crewIds: crewSel });
     toast(t("toast_listed"), t("toast_listedCount", { n: selected.length }));
     setSelected([]);
     setPrice("");
@@ -89,6 +95,8 @@ export function ListItemDialog({
                   image={i.image}
                   transparent={i.hasTransparentBackground}
                   name={i.name}
+                  category={i.category}
+                  color={i.color}
                   selected={selected.includes(i.id)}
                   onClick={() => setSelected((s) => (s.includes(i.id) ? s.filter((x) => x !== i.id) : [...s, i.id]))}
                 />
@@ -124,7 +132,34 @@ export function ListItemDialog({
             </div>
           )}
 
-          <p className="text-xs text-zinc-500">{t("list_visibleNote")}</p>
+          {crews.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-sm font-semibold">{t("where_title")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[{ id: "market", name: t("where_market"), on: market }, ...crews.map((c) => ({ id: c.id, name: c.name, on: crewSel.includes(c.id) }))].map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    aria-pressed={o.on}
+                    onClick={() =>
+                      o.id === "market"
+                        ? setMarket((m) => !m)
+                        : setCrewSel((s) => (s.includes(o.id) ? s.filter((x) => x !== o.id) : [...s, o.id]))
+                    }
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium",
+                      o.on ? "border-accent/60 bg-accent/20 text-white" : "border-white/10 bg-white/5 text-zinc-400",
+                    )}
+                  >
+                    {o.name}
+                  </button>
+                ))}
+              </div>
+              {!hasPlace && <p className="text-xs text-amber-300">{t("where_pick")}</p>}
+            </div>
+          )}
+
+          {market && <p className="text-xs text-zinc-500">{t("list_visibleNote")}</p>}
 
           <Button size="lg" className="w-full" disabled={!canSubmit} onClick={submit}>
             {selected.length > 0 ? t("list_submit", { n: selected.length }) : t("list_pick")}

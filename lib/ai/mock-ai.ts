@@ -131,8 +131,9 @@ const BRANDS = ["zara", "h&m", "nike", "adidas", "uniqlo", "weekday", "asos", "l
 
 const titleCase = (s: string) => s.replace(/\S+/g, (w) => w[0].toUpperCase() + w.slice(1));
 
-const materialFor = (text: string, category: ItemCategory) =>
-  MATERIALS.find(([re]) => re.test(text.toLowerCase()))?.[1] ?? DEFAULT_MATERIAL[category];
+/** Material nur, wenn der Text es wirklich nennt – nichts raten (ein falsches "Baumwolle" ist schlechter als kein Material). */
+const materialFor = (text: string, _category?: ItemCategory) => MATERIALS.find(([re]) => re.test(text.toLowerCase()))?.[1];
+void DEFAULT_MATERIAL;
 
 // ---------------------------------------------------------------------------------------------
 // Bild- und Text-Analyse (simuliert)
@@ -185,13 +186,13 @@ export async function analyzeImage(fileName?: string): Promise<AiResult> {
   const category = matchCategory(base) ?? sample.category;
   const name = generateTitle(fileName ?? "", category);
   const color = colorFromLabel(base) ?? pick(COLORS);
-  const material = materialFor(base, category) ?? sample.material;
+  const material = materialFor(base, category);
 
   return {
     name,
     category,
     color,
-    tags: [tag("category", categoryLabel(category)), tag("color", colorLabel(color)), tag("material", material)],
+    tags: [tag("category", categoryLabel(category)), tag("color", colorLabel(color)), ...(material ? [tag("material", material)] : [])],
   };
 }
 

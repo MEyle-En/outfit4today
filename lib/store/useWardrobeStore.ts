@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { categoryFromLabel } from "@/lib/categories";
 import { colorFromLabel } from "@/lib/colors";
-import { applyVisibility, defaultVisibility, visibilityFromLegacy } from "@/lib/visibility";
+import { applyVisibility, defaultVisibility, offersAllowed, visibilityFromLegacy } from "@/lib/visibility";
 import { healPlaceholderImage, placeholderPhoto } from "@/lib/mock-data";
 import { newId } from "@/lib/utils/uuid";
 import { MOCK_WARDROBE } from "@/lib/mock/wardrobe";
@@ -42,7 +42,13 @@ interface WardrobeState {
   /** Mehrere Felder eines Items ändern (Bearbeiten-Dialog) */
   updateItem: (id: string, patch: Partial<Omit<WardrobeItem, "id">>) => void;
   /** Items für den Marktplatz listen (oder mit undefined wieder entfernen) */
-  setListing: (ids: string[], listing: WardrobeItem["listing"], price?: number) => void;
+  setListing: (
+    ids: string[],
+    listing: WardrobeItem["listing"],
+    price?: number,
+    /** Wo anbieten? Ohne Angabe: öffentlicher Marketplace (wie bisher). crewIds: nur in diesen Crews. */
+    where?: { marketplace: boolean; crewIds?: string[] },
+  ) => void;
   /** Teile als heute getragen markieren (wearCount + 1) */
   wearItems: (ids: string[]) => number;
   clearAll: () => void;
@@ -93,7 +99,8 @@ export const useWardrobeStore = create<WardrobeState>()(
             const visibility = i.visibility.isPrivate
               ? applyVisibility(i.visibility, { sharedWithCrew: true })
               : applyVisibility(i.visibility, { isPrivate: true });
-            return visibility.onMarketplace ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
+            // Angebot bleibt, solange das Teil für andere sichtbar ist (Crew oder Marketplace)
+            return offersAllowed(visibility) ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
           }),
         })),
       setVisibility: (id, p) =>
@@ -101,22 +108,29 @@ export const useWardrobeStore = create<WardrobeState>()(
           items: s.items.map((i) => {
             if (i.id !== id) return i;
             const visibility = applyVisibility(i.visibility, p);
-            return visibility.onMarketplace ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
+            // Angebot bleibt, solange das Teil für andere sichtbar ist (Crew oder Marketplace)
+            return offersAllowed(visibility) ? { ...i, visibility } : { ...i, visibility, listing: undefined, price: undefined };
           }),
         })),
       // Anbieten schaltet den Marketplace-Kanal ein (Crew-Freigabe bleibt, wie sie ist); Zurückziehen schaltet ihn aus
-      setListing: (ids, listing, price) =>
+      setListing: (ids, listing, price, where) =>
         set((s) => ({
-          items: s.items.map((i) =>
-            ids.includes(i.id)
-              ? {
-                  ...i,
-                  listing,
-                  price: listing && listing !== "swap" ? price : undefined,
-                  visibility: applyVisibility(i.visibility, { onMarketplace: !!listing }),
-                }
-              : i,
-          ),
+          items: s.items.map((i) => {
+            if (!ids.includes(i.id)) return i;
+            let visibility: Visibility;
+            if (!listing) visibility = applyVisibility(i.visibility, { onMarketplace: false });
+            else if (!where) visibility = applyVisibility(i.visibility, { onMarketplace: true });
+            else {
+              // Gewählte Crews schalten die Crew-Freigabe ein und begrenzen sie auf diese Crews
+              const crews = where.crewIds ?? [];
+              visibility = applyVisibility(i.visibility, {
+                onMarketplace: where.marketplace,
+                ...(crews.length ? { sharedWithCrew: true, crewIds: crews } : {}),
+              });
+            }
+            const keep = !!listing && offersAllowed(visibility);
+            return { ...i, visibility, listing: keep ? listing : undefined, price: keep && listing !== "swap" ? price : undefined };
+          }),
         })),
       wearItems: (ids) => {
         const unique = new Set(ids);

@@ -16,10 +16,18 @@ export const defaultVisibility = (): Visibility => ({
 
 /** Hält die Regeln ein: Privat und Crew/Marketplace schließen sich aus; ohne Kanal ist ein Item automatisch privat. */
 export function normalizeVisibility(v: Visibility): Visibility {
-  if (v.isPrivate) return { ...v, isPrivate: true, sharedWithCrew: false, onMarketplace: false };
-  if (!v.sharedWithCrew && !v.onMarketplace) return { ...v, isPrivate: true };
-  return { ...v, isPrivate: false };
+  if (v.isPrivate) return { ...v, isPrivate: true, sharedWithCrew: false, onMarketplace: false, crewIds: undefined };
+  if (!v.sharedWithCrew && !v.onMarketplace) return { ...v, isPrivate: true, crewIds: undefined };
+  // Die Crew-Auswahl gilt nur, solange mit der Crew geteilt wird; eine leere Liste bedeutet "alle"
+  return { ...v, isPrivate: false, crewIds: v.sharedWithCrew && v.crewIds?.length ? v.crewIds : undefined };
 }
+
+/** Tausch/Verkauf ist möglich, sobald das Teil für andere sichtbar ist (Crew oder Marketplace). */
+export const offersAllowed = (v: Visibility) => !v.isPrivate && (v.sharedWithCrew || v.onMarketplace);
+
+/** Sieht diese Crew das Teil? (ohne Auswahl: alle Crews) */
+export const sharedWithCrewId = (v: Visibility, crewId: string) =>
+  !v.isPrivate && v.sharedWithCrew && (!v.crewIds?.length || v.crewIds.includes(crewId));
 
 /** Wendet eine Änderung an. "Privat an" leert Crew + Marketplace, "Crew/Marketplace an" schaltet Privat aus. */
 export function applyVisibility(v: Visibility, patch: Partial<Visibility>): Visibility {

@@ -23,6 +23,9 @@ import { inviteUrl } from "@/lib/utils/pendingJoin";
 import { useCrewStore, type CrewTab } from "@/lib/store/useCrewStore";
 import { ChatDialog } from "@/components/market/ChatDialog";
 import { useChatStore, type ThreadMeta } from "@/lib/store/useChatStore";
+import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
+import { sharedWithCrewId } from "@/lib/visibility";
+import { isDemoItem } from "@/lib/demo";
 import { stagger } from "@/lib/stagger";
 import { cn } from "@/lib/utils";
 import type { FriendItem, ItemCategory } from "@/types";
@@ -161,6 +164,7 @@ export function CrewView() {
   );
 
   const crew = crews.find((c) => c.id === activeCrewId) ?? crews[0];
+  const crewId = crew?.id;
   const posts = useMemo(
     () => allPosts.filter((p) => p.crewId === crew?.id && !blocked.includes(p.authorId)).sort((a, b) => b.createdAt - a.createdAt),
     [allPosts, crew?.id, blocked],
@@ -169,7 +173,6 @@ export function CrewView() {
   const memberName = (id: string) => (id === meId ? t("crew_you") : members.find((m) => m.id === id)?.name ?? "");
 
   // Posts aus Supabase: Crew-Tab = Posts der aktiven Crew, Public-Tab = öffentliche Posts
-  const crewId = crew?.id;
   useEffect(() => {
     if (tab === "public") void loadPosts("public");
     else if (tab === "fits" && crewId) void loadPosts(crewId);
@@ -193,14 +196,19 @@ export function CrewView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crew?.id, memberKey]);
 
-  const friendItems = useMemo(
-    () =>
-      crewItems.filter(
-        (i) =>
-          !blocked.includes(i.ownerId) && (owner === "all" || i.ownerId === owner) && (category === "all" || i.category === category),
-      ),
-    [crewItems, owner, category, blocked],
-  );
+  // Eigene freigegebene Teile gehören dazu: so sieht man, was die Crew von einem selbst sieht
+  const myItems = useWardrobeStore((s) => s.items);
+  const friendItems = useMemo(() => {
+    if (!crewId) return [];
+    const mine: FriendItem[] = meId ? myItems.filter((i) => !isDemoItem(i)).map((i) => ({ ...i, ownerId: meId })) : [];
+    return [...crewItems, ...mine].filter(
+      (i) =>
+        sharedWithCrewId(i.visibility, crewId) && // nur Teile, die für GENAU diese Crew freigegeben sind
+        !blocked.includes(i.ownerId) &&
+        (owner === "all" || i.ownerId === owner) &&
+        (category === "all" || i.category === category),
+    );
+  }, [crewItems, myItems, meId, crewId, owner, category, blocked]);
 
   // Einladen: auf dem Handy das Teilen-Menü (WhatsApp, iMessage …) mit fertigem Text, sonst Link in die Zwischenablage
   const invite = async () => {
@@ -235,7 +243,8 @@ export function CrewView() {
     const meta = await startThread({ listingId: i.id, title: i.name, image: i.image, sellerId: i.ownerId, sellerName: memberName(i.ownerId) });
     if (meta) {
       const existing = useChatStore.getState().threads.find((x) => x.id === meta.id);
-      if (!existing?.last && !existing?.messages.length) await sendChat(meta.id, t("crew_borrowMsg", { name: i.name }));
+      // Leih-Anfrage nur bei Teilen ohne Angebot vorformulieren; bei Tausch/Verkauf schreibt man selbst
+      if (!i.listing && !existing?.last && !existing?.messages.length) await sendChat(meta.id, t("crew_borrowMsg", { name: i.name }));
       setBorrowChat(meta);
     }
     setBorrowBusy(null);
@@ -390,10 +399,15 @@ export function CrewView() {
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="default">{categoryLabel(i.category)}</Badge>
                         <Badge>{memberName(i.ownerId)}</Badge>
+                        {i.listing && (
+                          <Badge className="bg-amber-400/20 text-amber-200">
+                            {i.listing === "swap" ? t("mode_swap") : `${i.price ?? ""} €${i.listing === "both" ? ` · ${t("mode_swap")}` : ""}`}
+                          </Badge>
+                        )}
                       </div>
                       {i.ownerId !== meId && (
                         <Button size="sm" variant="glass" className="w-full" disabled={borrowBusy === i.id} onClick={() => void askBorrow(i)}>
-                          <HandHeart className="h-4 w-4" /> {t("crew_borrow")}
+                          <HandHeart className="h-4 w-4" /> {i.listing ? t("crew_ask") : t("crew_borrow")}
                         </Button>
                       )}
                     </div>
