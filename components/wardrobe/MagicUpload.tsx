@@ -187,22 +187,24 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
         }}
       />
 
-      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={autoRemove}
+        onClick={() => {
+          autoRemoveRef.current = !autoRemove;
+          setAutoRemove(!autoRemove);
+        }}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm"
+      >
         <span>
           <span className="block font-medium">{tr("bg_auto")}</span>
           <span className="block text-xs text-zinc-400">{tr("bg_autoHint")}</span>
         </span>
-        <input
-          type="checkbox"
-          role="switch"
-          checked={autoRemove}
-          onChange={(e) => {
-            setAutoRemove(e.target.checked);
-            autoRemoveRef.current = e.target.checked;
-          }}
-          className="h-5 w-5 shrink-0 accent-[#a855f7]"
-        />
-      </label>
+        <span className={cn("h-6 w-10 shrink-0 rounded-full p-0.5 transition-colors", autoRemove ? "bg-accent" : "bg-white/15")}>
+          <span className={cn("block h-5 w-5 rounded-full bg-white transition-transform", autoRemove && "translate-x-4")} />
+        </span>
+      </button>
 
       <button
         type="button"

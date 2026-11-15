@@ -49,7 +49,7 @@ export default function WardrobePage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-zinc-500">{view === "mine" ? t("wardrobe_pieces", { n: items.length }) : t("crew_yourCrew")}</p>
-        <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight">
+        <h1 className="font-display text-3xl font-bold leading-[1.05] tracking-tight">
           {view === "mine" ? t("wardrobe_title") : t("crew_viewTitle")}
         </h1>
       </header>
@@ -65,8 +65,7 @@ export default function WardrobePage() {
         </TabsList>
 
         <TabsContent value="mine" className="space-y-6">
-          <ForgottenTreasures />
-
+          {/* Hinzufügen ist die Hauptaktion und steht deshalb ganz oben; die vergessenen Teile folgen darunter */}
           <Tabs defaultValue="magic">
             <TabsList>
               <TabsTrigger value="magic">
@@ -92,6 +91,8 @@ export default function WardrobePage() {
               {notice}
             </p>
           )}
+
+          <ForgottenTreasures />
 
           <div className="space-y-2">
             <div>

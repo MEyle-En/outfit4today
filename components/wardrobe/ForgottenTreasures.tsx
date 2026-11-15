@@ -40,8 +40,8 @@ export function ForgottenTreasures() {
 
       <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {forgotten.map(({ item, reason }) => (
-          <article key={item.id} className={cn("w-40 shrink-0 snap-start overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}>
-            <div className="relative aspect-[4/5]">
+          <article key={item.id} className={cn("w-36 shrink-0 snap-start overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}>
+            <div className="relative aspect-square">
               <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
               <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
                 {isDemoItem(item) && <ExampleBadge />}

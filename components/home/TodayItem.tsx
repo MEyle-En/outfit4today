@@ -139,7 +139,7 @@ export function TodayItem() {
 
           {companions.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{t("today_goesWith")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{t("today_goesWith")}</p>
               <ul className="flex gap-2">
                 {companions.map((c) => (
                   <li key={c.id} className="w-20 min-w-0">

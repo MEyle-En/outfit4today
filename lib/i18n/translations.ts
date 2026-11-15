@@ -407,7 +407,7 @@ export const de = {
   wardrobe_emptyDesc: "Lade dein erstes Teil hoch – die AI taggt es in Sekunden für dich.",
   wardrobe_emptyTitle: "Dein Kleiderschrank ist leer",
   wardrobe_magic: "Magic Upload",
-  wardrobe_mine: "Mein Wardrobe",
+  wardrobe_mine: "Meine Teile",
   wardrobe_noMatchDesc: "Ändere Kategorie oder Farbe oder füge neue Teile hinzu.",
   wardrobe_noMatchTitle: "Nichts in dieser Auswahl",
   wardrobe_pieces: "{n} Teile",

@@ -27,7 +27,7 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Hauptnavigation" className="pb-safe fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md px-4 pb-3">
-      <ul className="glass flex items-stretch justify-between rounded-2xl bg-surface/70 p-1.5 shadow-2xl">
+      <ul className="glass flex items-stretch justify-between rounded-2xl bg-surface/95 p-1.5 shadow-2xl">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
