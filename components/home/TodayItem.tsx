@@ -15,6 +15,7 @@ import { toast } from "@/lib/store/useToastStore";
 import { todayKey, useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { haptic } from "@/lib/utils/haptic";
 import { daysSince } from "@/lib/wear";
+import { completeOutfit } from "@/lib/outfit";
 import { ExampleBadge } from "@/components/ui/ExampleBadge";
 import { isDemoItem } from "@/lib/demo";
 import type { WardrobeItem } from "@/types";
@@ -56,6 +57,9 @@ export function TodayItem() {
     [clothes, daily],
   );
 
+  // Das Teil des Tages wird zu einem kompletten Outfit ergänzt (Oberteil + Hose + Schuhe …)
+  const companions = useMemo(() => (candidate ? completeOutfit(candidate, clothes) : []), [candidate, clothes]);
+
   const reason = !candidate
     ? ""
     : candidate.wearCount === 0
@@ -64,7 +68,7 @@ export function TodayItem() {
 
   const wear = () => {
     if (!candidate) return;
-    wearItems([candidate.id]); // last_worn + wear_count, der Sync speichert es in der Cloud
+    wearItems([candidate.id, ...companions.map((c) => c.id)]); // ganzes Outfit: last_worn + wear_count, der Sync speichert es
     markHandledToday(candidate.id); // -> nächstes Teil erscheint sofort
     playSound("success");
     haptic("success");
@@ -76,7 +80,7 @@ export function TodayItem() {
   const styleInLab = () => {
     if (!candidate) return;
     markHandledToday(candidate.id); // nach der Rückkehr aus dem Lab ist schon das nächste Teil dran
-    router.push(`/lab?prefill=${candidate.id}`);
+    router.push(`/lab?prefill=${[candidate.id, ...companions.map((c) => c.id)].join(",")}`);
   };
 
   const closeOffer = (open: boolean) => {
@@ -119,7 +123,7 @@ export function TodayItem() {
         >
           <div className="flex gap-4">
             <div className="relative shrink-0">
-              <ItemImage src={candidate.image} alt={candidate.name} transparent={candidate.hasTransparentBackground} className="aspect-[4/5] w-32 rounded-xl" />
+              <ItemImage src={candidate.image} alt={candidate.name} category={candidate.category} color={candidate.color} transparent={candidate.hasTransparentBackground} className="aspect-[4/5] w-32 rounded-xl" />
               {isDemoItem(candidate) && <ExampleBadge className="absolute left-1.5 top-1.5" />}
             </div>
             <div className="min-w-0 flex-1 space-y-1">
@@ -132,6 +136,20 @@ export function TodayItem() {
               <p className="inline-block rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent-soft">{reason}</p>
             </div>
           </div>
+
+          {companions.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{t("today_goesWith")}</p>
+              <ul className="flex gap-2">
+                {companions.map((c) => (
+                  <li key={c.id} className="w-20 min-w-0">
+                    <ItemImage src={c.image} alt={c.name} category={c.category} color={c.color} transparent={c.hasTransparentBackground} loading="lazy" className="aspect-[4/5] w-full rounded-lg" />
+                    <p className="mt-1 truncate text-[11px] text-zinc-400">{c.name}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <TodayItemActions
             onStyle={styleInLab}

@@ -65,7 +65,7 @@ export function MarketCard({
             ))}
           </div>
         ) : (
-          <ItemImage src={listing.image} alt={listing.name} transparent={listing.transparent} loading="lazy" className="h-full w-full" />
+          <ItemImage src={listing.image} alt={listing.name} category={listing.category} color={listing.color} transparent={listing.transparent} loading="lazy" className="h-full w-full" />
         )}
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
           {listing.demo && <ExampleBadge />}

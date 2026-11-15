@@ -42,7 +42,7 @@ export function ForgottenTreasures() {
         {forgotten.map(({ item, reason }) => (
           <article key={item.id} className={cn("w-40 shrink-0 snap-start overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}>
             <div className="relative aspect-[4/5]">
-              <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
+              <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
               <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
                 {isDemoItem(item) && <ExampleBadge />}
                 <Badge variant="glass" className="bg-black/60 py-0.5 text-[10px] text-white">

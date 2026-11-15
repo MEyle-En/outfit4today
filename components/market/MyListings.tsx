@@ -29,7 +29,7 @@ function ListingRow({ item }: { item: WardrobeItem }) {
 
   return (
     <article className="animate-fade-in-up card-lift flex gap-3 rounded-2xl border border-white/10 bg-surface p-3">
-      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} className="h-24 w-20 shrink-0 rounded-xl" />
+      <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={item.hasTransparentBackground} className="h-24 w-20 shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className="truncate font-display text-lg font-semibold leading-tight">{item.name}</p>

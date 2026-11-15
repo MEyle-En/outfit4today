@@ -24,7 +24,7 @@ export function TrayThumb({ item, dragging }: { item: WardrobeItem; dragging?: b
         dragging && "border-accent shadow-glow",
       )}
     >
-      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} draggable={false} className="pointer-events-none h-full w-full" />
+      <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={item.hasTransparentBackground} draggable={false} className="pointer-events-none h-full w-full" />
       {isDemoItem(item) && <ExampleBadge className="absolute left-1 top-1 px-1.5 text-[8px]" />}
       <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-4 text-[10px] font-medium">
         {item.name}

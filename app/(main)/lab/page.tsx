@@ -53,7 +53,9 @@ export default function LabPage() {
     const prefill = new URLSearchParams(window.location.search).get("prefill");
     if (prefill) {
       clear();
-      if (useWardrobeStore.getState().items.some((i) => i.id === prefill)) add(prefill, { x: 100, y: 120 });
+      // Mehrere IDs (kommagetrennt) = ganzes Outfit vom Tagesvorschlag; die Teile werden leicht versetzt abgelegt
+      const have = new Set(useWardrobeStore.getState().items.map((i) => i.id));
+      prefill.split(",").filter((id) => have.has(id)).slice(0, 4).forEach((id, n) => add(id, { x: 40 + (n % 2) * 150, y: 60 + Math.floor(n / 2) * 190 }));
       router.replace("/lab"); // Parameter entfernen, damit ein Reload nicht erneut vorausfüllt
     } else if (keepOnce) setKeepOnce(false);
     else clear();

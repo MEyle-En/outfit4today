@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { categoryArt } from "@/lib/mock-data";
+import type { ItemCategory, ItemColor } from "@/types";
 
 /** Rahmen-Klassen für Kacheln: freigestellte Teile bekommen keinen Kasten (Rahmen bleibt unsichtbar, damit sich nichts verschiebt). */
 export const frameClass = (transparent?: boolean, box = "border border-white/10 bg-surface") =>
@@ -17,6 +22,8 @@ export function ItemImage({
   loading,
   draggable,
   style,
+  category,
+  color,
 }: {
   src: string;
   alt?: string;
@@ -25,7 +32,19 @@ export function ItemImage({
   loading?: "lazy" | "eager";
   draggable?: boolean;
   style?: React.CSSProperties;
+  /** Für das Ersatzbild, falls das Foto nicht lädt */
+  category?: ItemCategory;
+  color?: ItemColor;
 }) {
+  // Lädt das Foto nicht (gelöscht, offline, kaputte URL), zeigen wir ein neutrales Symbolbild statt des Alt-Texts
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (failed || !src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={categoryArt(category ?? "top", color)} alt={alt} draggable={draggable} className={cn("object-cover", className)} style={style} />
+    );
+  }
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -33,6 +52,7 @@ export function ItemImage({
       alt={alt}
       loading={loading}
       draggable={draggable}
+      onError={() => setFailed(true)}
       className={cn(transparent ? "bg-transparent object-contain" : "object-cover", className)}
       style={transparent ? { filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))", ...style } : style}
     />

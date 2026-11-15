@@ -142,7 +142,7 @@ export function DraggableItem({ canvasItem, item, zIndex, selected, onSelect }: 
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <ItemImage src={item.image} alt={item.name} transparent={cutout} draggable={false} className="pointer-events-none h-full w-full" />
+          <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={cutout} draggable={false} className="pointer-events-none h-full w-full" />
           <div
             data-export-hide
             className={cn(

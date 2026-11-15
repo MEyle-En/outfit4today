@@ -46,7 +46,7 @@ export function ItemCard({
       style={stagger(index)}
       className={cn("animate-fade-in-up card-lift group relative aspect-[4/5] overflow-hidden rounded-2xl", frameClass(item.hasTransparentBackground))}
     >
-      <ItemImage src={item.image} alt={item.name} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
+      <ItemImage src={item.image} alt={item.name} category={item.category} color={item.color} transparent={item.hasTransparentBackground} loading="lazy" className="h-full w-full" />
 
       <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
         <button

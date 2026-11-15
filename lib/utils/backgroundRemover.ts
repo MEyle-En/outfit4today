@@ -16,6 +16,11 @@ export async function removeBackgroundFromImage(
   try {
     const { removeBackground } = await import("@imgly/background-removal");
     return await removeBackground(file, {
+      // Berechnung im Web Worker, damit die Oberfläche nicht einfriert ("Seite reagiert nicht")
+      proxyToWorker: true,
+      // Halbe Modellgröße (schnellerer Download, weniger Speicher) bei praktisch gleicher Qualität
+      model: "isnet_fp16",
+      output: { format: "image/png" },
       progress: (key, current, total) => {
         onProgress?.(key, current, total);
       },
@@ -29,7 +34,7 @@ export async function removeBackgroundFromImage(
 /** Maximale Wartezeit auf die Freistellung (Modell-Download + Berechnung). */
 export const BG_REMOVAL_TIMEOUT_MS = 45_000;
 /** Kantenlänge, auf die das Foto vor der Freistellung verkleinert wird. */
-export const REMOVAL_MAX_SIZE = 1600;
+export const REMOVAL_MAX_SIZE = 1024;
 
 /**
  * Lädt Bibliothek und KI-Modell im Leerlauf vor (nach dem Login), damit die erste Freistellung nicht auf den
@@ -53,7 +58,7 @@ export function warmupBackgroundRemoval(): void {
 export function removeBackgroundWithTimeout(file: File, ms = BG_REMOVAL_TIMEOUT_MS): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Background removal timed out")), ms);
-    // Erst verkleinern (max. 1600 px, JPEG 0.9): deutlich schneller, das Ergebnis wird ohnehin auf Kachelgröße gezeigt
+    // Erst verkleinern (max. 1024 px – das Modell rechnet intern ohnehin mit 1024, JPEG 0.9): deutlich schneller, das Ergebnis wird ohnehin auf Kachelgröße gezeigt
     downscaleFile(file, REMOVAL_MAX_SIZE, 0.9).then(removeBackgroundFromImage).then(
       (blob) => {
         clearTimeout(timer);

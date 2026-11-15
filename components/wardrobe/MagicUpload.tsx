@@ -99,8 +99,10 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
     await Promise.all(
       created.map(async ({ draft, file }) => {
         try {
-          const image = await fileToDataUrl(file, 2000, 0.85);
-          patch(draft.id, { image, status: "ready" });
+          const image = await fileToDataUrl(file, 1280, 0.85);
+          // Farbe direkt aus dem Foto vorbelegen (bleibt änderbar) – ein Pflichtfeld weniger zum Antippen
+          const color = detectColorFromText(file.name) ?? (await detectDominantColor(image)) ?? undefined;
+          patch(draft.id, { image, status: "ready", color, tags: color ? syncTag([], "color", colorLabel(color)) : [] });
           // Schalter an: direkt freistellen (bei Fehler/Timeout bleibt das Original, siehe removeBg)
           if (autoRemoveRef.current) {
             removalQueue.current = removalQueue.current.then(() => removeBg({ ...draft, image, file }));
@@ -264,7 +266,7 @@ export function MagicUpload({ onSaved }: { onSaved?: (count: number) => void }) 
               </div>
             ) : (
               <div className="flex gap-3 p-3">
-                <ItemImage src={d.image} alt={d.name} transparent={d.transparent} className={`h-28 w-24 shrink-0 rounded-xl ${d.transparent ? "" : "bg-black/30"}`} />
+                <ItemImage src={d.image} alt={d.name} category={d.category || undefined} color={d.color} transparent={d.transparent} className={`h-28 w-24 shrink-0 rounded-xl ${d.transparent ? "" : "bg-black/30"}`} />
                 <div className="min-w-0 flex-1 space-y-2">
                   {d.category === "lifestyle" && <CategoryBadge category="lifestyle" />}
                   <div className="flex items-start justify-between gap-2">
