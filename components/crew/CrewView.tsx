@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Globe, LogIn, LogOut, Plus, Shirt, Sparkles, Users } from "lucide-react";
+import { Check, Globe, HandHeart, LogIn, LogOut, Plus, Share2, Shirt, Sparkles, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,8 @@ import { getCrewItems } from "@/lib/supabase-crews";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { inviteUrl } from "@/lib/utils/pendingJoin";
 import { useCrewStore, type CrewTab } from "@/lib/store/useCrewStore";
+import { ChatDialog } from "@/components/market/ChatDialog";
+import { useChatStore, type ThreadMeta } from "@/lib/store/useChatStore";
 import { stagger } from "@/lib/stagger";
 import { cn } from "@/lib/utils";
 import type { FriendItem, ItemCategory } from "@/types";
@@ -200,15 +202,43 @@ export function CrewView() {
     [crewItems, owner, category, blocked],
   );
 
-  const copy = async () => {
+  // Einladen: auf dem Handy das Teilen-Menü (WhatsApp, iMessage …) mit fertigem Text, sonst Link in die Zwischenablage
+  const invite = async () => {
     if (!crew) return;
+    const url = inviteUrl(crew.inviteCode); // immer die echte Origin, nie eine feste Domain
+    const text = t("crew_shareText", { crew: crew.name });
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: "Outfit4Today", text, url });
+        return;
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") return; // Nutzer hat das Menü geschlossen
+      }
+    }
     try {
-      await navigator.clipboard.writeText(inviteUrl(crew.inviteCode)); // immer die echte Origin, nie eine feste Domain
+      await navigator.clipboard.writeText(`${text} ${url}`);
     } catch {
       /* Clipboard nicht verfügbar – der Code bleibt sichtbar */
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  // Ausleihen: öffnet einen Chat mit der Besitzerin zum Teil; die Anfrage wird nur beim ersten Mal automatisch gesendet
+  const startThread = useChatStore((s) => s.startThread);
+  const sendChat = useChatStore((s) => s.send);
+  const [borrowChat, setBorrowChat] = useState<ThreadMeta | null>(null);
+  const [borrowBusy, setBorrowBusy] = useState<string | null>(null);
+  const askBorrow = async (i: FriendItem) => {
+    if (borrowBusy) return;
+    setBorrowBusy(i.id);
+    const meta = await startThread({ listingId: i.id, title: i.name, image: i.image, sellerId: i.ownerId, sellerName: memberName(i.ownerId) });
+    if (meta) {
+      const existing = useChatStore.getState().threads.find((x) => x.id === meta.id);
+      if (!existing?.last && !existing?.messages.length) await sendChat(meta.id, t("crew_borrowMsg", { name: i.name }));
+      setBorrowChat(meta);
+    }
+    setBorrowBusy(null);
   };
 
   return (
@@ -243,6 +273,7 @@ export function CrewView() {
       </div>
       <CreateCrewDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinCrewDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      {borrowChat && <ChatDialog meta={borrowChat} open onOpenChange={(o) => !o && setBorrowChat(null)} />}
       <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} members={members} />
       {!crewsLoaded && crews.length === 0 && <Skeleton className="h-24 w-full" />}
 
@@ -266,9 +297,9 @@ export function CrewView() {
               <span className="block text-[10px] uppercase tracking-wide text-zinc-500">{t("crew_codeManual")}</span>
               <span className="block truncate font-mono text-base font-semibold tracking-widest text-white">{crew.inviteCode}</span>
             </div>
-            <Button size="sm" variant="glass" onClick={copy}>
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? t("crew_copied") : t("crew_copyLink")}
+            <Button size="sm" onClick={invite}>
+              {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+              {copied ? t("crew_copied") : t("crew_shareLink")}
             </Button>
           </div>
           <button
@@ -360,6 +391,11 @@ export function CrewView() {
                         <Badge variant="default">{categoryLabel(i.category)}</Badge>
                         <Badge>{memberName(i.ownerId)}</Badge>
                       </div>
+                      {i.ownerId !== meId && (
+                        <Button size="sm" variant="glass" className="w-full" disabled={borrowBusy === i.id} onClick={() => void askBorrow(i)}>
+                          <HandHeart className="h-4 w-4" /> {t("crew_borrow")}
+                        </Button>
+                      )}
                     </div>
                   </article>
                 ))}
