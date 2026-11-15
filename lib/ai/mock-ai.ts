@@ -108,18 +108,6 @@ export function detectCategory(filename: string, tags: string[] = []): ItemCateg
   return matchCategory(`${filename.replace(/\.[a-z0-9]+$/i, "")} ${tags.join(" ")}`) ?? "top";
 }
 
-const DEFAULT_MATERIAL: Partial<Record<ItemCategory, string>> = {
-  top: "Baumwolle",
-  bottom: "Baumwolle",
-  outerwear: "Nylon",
-  shoes: "Leder",
-  bag: "Leder",
-  jewelry: "Silber",
-  hat: "Baumwolle",
-  hijab: "Jersey",
-  socks: "Baumwolle",
-};
-
 const MATERIALS: [RegExp, string][] = [
   [/leder|leather/, "Leder"],
   [/wolle|wool/, "Wolle"],
@@ -132,8 +120,7 @@ const BRANDS = ["zara", "h&m", "nike", "adidas", "uniqlo", "weekday", "asos", "l
 const titleCase = (s: string) => s.replace(/\S+/g, (w) => w[0].toUpperCase() + w.slice(1));
 
 /** Material nur, wenn der Text es wirklich nennt – nichts raten (ein falsches "Baumwolle" ist schlechter als kein Material). */
-const materialFor = (text: string, _category?: ItemCategory) => MATERIALS.find(([re]) => re.test(text.toLowerCase()))?.[1];
-void DEFAULT_MATERIAL;
+const materialFor = (text: string) => MATERIALS.find(([re]) => re.test(text.toLowerCase()))?.[1];
 
 // ---------------------------------------------------------------------------------------------
 // Bild- und Text-Analyse (simuliert)
@@ -186,7 +173,7 @@ export async function analyzeImage(fileName?: string): Promise<AiResult> {
   const category = matchCategory(base) ?? sample.category;
   const name = generateTitle(fileName ?? "", category);
   const color = colorFromLabel(base) ?? pick(COLORS);
-  const material = materialFor(base, category);
+  const material = materialFor(base);
 
   return {
     name,
@@ -208,7 +195,7 @@ export async function parseQuickAdd(text: string): Promise<AiResult> {
   // Erstes erkanntes Farbwort; Jeans/Denim ohne Farbwort -> Blau
   const color = colorFromLabel(t) ?? (/\b(jeans|denim)\b/.test(t) ? ("blue" as ItemColor) : undefined);
   if (color) tags.push(tag("color", colorLabel(color)));
-  const mat = materialFor(t, category);
+  const mat = materialFor(t);
   if (mat && matched) tags.push(tag("material", mat));
   const brand = BRANDS.find((b) => t.includes(b));
   if (brand) tags.push(tag("brand", titleCase(brand)));
