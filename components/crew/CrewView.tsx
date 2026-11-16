@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, Globe, HandHeart, LogIn, LogOut, Plus, Share2, Shirt, Sparkles, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
+import { ShareToCrewDialog } from "@/components/crew/ShareToCrewDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -139,6 +140,7 @@ export function CrewView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const blocked = useModerationStore((s) => s.blocked);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [crewItems, setCrewItems] = useState<FriendItem[]>([]);
@@ -282,6 +284,8 @@ export function CrewView() {
       </div>
       <CreateCrewDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinCrewDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      {/* key: je Crew frisch öffnen, damit die Vorauswahl zur Crew passt */}
+      {crew && shareOpen && <ShareToCrewDialog key={crew.id} crew={crew} open onOpenChange={setShareOpen} />}
       {borrowChat && <ChatDialog meta={borrowChat} open onOpenChange={(o) => !o && setBorrowChat(null)} />}
       <MembersDialog open={membersOpen} onOpenChange={setMembersOpen} members={members} />
       {!crewsLoaded && crews.length === 0 && <Skeleton className="h-24 w-full" />}
@@ -374,6 +378,9 @@ export function CrewView() {
             noCrew
           ) : (
             <>
+              <Button variant="glass" className="w-full" onClick={() => setShareOpen(true)}>
+                <Plus className="h-4 w-4" /> {t("crewShare_open")}
+              </Button>
               <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
                 {[{ id: "all", name: t("all") }, ...members.filter((m) => m.id !== meId && !blocked.includes(m.id))].map((f) => (
                   <button
