@@ -118,6 +118,17 @@ export async function leaveCrew(crewId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Crew endgültig löschen – nur die Erstellerin darf das (RLS: crews_delete_owner).
+ * Mitgliedschaften und Crew-Posts hängen per "on delete cascade" an der Crew und verschwinden mit.
+ */
+export async function deleteCrew(crewId: string): Promise<void> {
+  const { data, error } = await supabase.from("crews").delete().eq("id", crewId).select("id");
+  if (error) throw error;
+  // Ohne Berechtigung löscht die Datenbank still nichts – das darf nicht als Erfolg durchgehen
+  if (!data || data.length === 0) throw new Error("Crew not deleted");
+}
+
 /** Mit der Crew geteilte Teile der Mitglieder (die RLS-Regel auf wardrobe_items lässt nur Freigegebenes durch). */
 export async function getCrewItems(memberIds: string[]): Promise<FriendItem[]> {
   if (memberIds.length === 0) return [];

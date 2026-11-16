@@ -37,6 +37,8 @@ interface CrewState {
   createCrew: (name: string) => Promise<Crew | null>;
   joinCrew: (code: string) => Promise<cloud.JoinResult>;
   leaveCrew: (crewId: string) => Promise<boolean>;
+  /** Nur für die Erstellerin: Crew samt Mitgliedschaften und Crew-Posts löschen */
+  deleteCrew: (crewId: string) => Promise<boolean>;
   setActiveCrew: (id: string) => void;
   /** Posts einer Crew-ID, die öffentlichen ("public") oder meine ("mine") laden */
   loadPosts: (scope: social.PostScope) => Promise<void>;
@@ -141,6 +143,20 @@ export const useCrewStore = create<CrewState>()(
         } catch (e) {
           console.error("Crew verlassen fehlgeschlagen:", e);
           toast(translate("crew_errLeave"), undefined, "error");
+          return false;
+        }
+      },
+
+      deleteCrew: async (crewId) => {
+        try {
+          await cloud.deleteCrew(crewId);
+          set((s) => ({ posts: s.posts.filter((p) => p.crewId !== crewId), activeCrewId: s.activeCrewId === crewId ? null : s.activeCrewId }));
+          await get().loadCrews();
+          toast(translate("crew_deletedToast"));
+          return true;
+        } catch (e) {
+          console.error("Crew löschen fehlgeschlagen:", e);
+          toast(translate("crew_errDelete"), undefined, "error");
           return false;
         }
       },

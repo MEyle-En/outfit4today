@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ItemImage, frameClass } from "@/components/wardrobe/ItemImage";
 import { useRouter } from "next/navigation";
-import { Check, Globe, HandHeart, LogIn, LogOut, Plus, Share2, Shirt, Sparkles, Users } from "lucide-react";
+import { Check, Globe, HandHeart, LogIn, LogOut, Plus, Share2, Shirt, Sparkles, Trash2, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
-import { ShareToCrewDialog } from "@/components/crew/ShareToCrewDialog";
+import { ShareToCrewDialog, crewSharePatch } from "@/components/crew/ShareToCrewDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -128,6 +128,7 @@ export function CrewView() {
   const crews = useCrewStore((s) => s.crews);
   const crewsLoaded = useCrewStore((s) => s.crewsLoaded);
   const leaveCrew = useCrewStore((s) => s.leaveCrew);
+  const deleteCrew = useCrewStore((s) => s.deleteCrew);
   const meId = useAuthStore((s) => s.user?.id);
   const activeCrewId = useCrewStore((s) => s.activeCrewId);
   const setActiveCrew = useCrewStore((s) => s.setActiveCrew);
@@ -141,6 +142,8 @@ export function CrewView() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const blocked = useModerationStore((s) => s.blocked);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [crewItems, setCrewItems] = useState<FriendItem[]>([]);
@@ -284,6 +287,43 @@ export function CrewView() {
       </div>
       <CreateCrewDialog open={createOpen} onOpenChange={setCreateOpen} />
       <JoinCrewDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      {crew && (
+        <Dialog open={deleteOpen} onOpenChange={(o) => !deleting && setDeleteOpen(o)}>
+          <DialogContent>
+            <DialogTitle>{t("crew_deleteTitle", { crew: crew.name })}</DialogTitle>
+            <DialogDescription>{t("crew_deleteDesc")}</DialogDescription>
+            <div className="mt-5 flex gap-2">
+              <Button size="lg" variant="glass" className="flex-1" disabled={deleting} onClick={() => setDeleteOpen(false)}>
+                {t("crop_cancel")}
+              </Button>
+              <Button
+                size="lg"
+                className="flex-1 bg-red-500 text-white hover:bg-red-600"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  // Vor dem Löschen merken: eigene Teile, die nur für diese Crew freigegeben waren
+                  const others = crews.filter((c) => c.id !== crew.id).map((c) => c.id);
+                  const ok = await deleteCrew(crew.id);
+                  if (ok) {
+                    // Freigaben aufräumen, damit "nur diese Crew" nicht still zu "alle Crews" wird
+                    const { items, setVisibility } = useWardrobeStore.getState();
+                    for (const i of items) {
+                      if (!i.visibility.crewIds?.includes(crew.id)) continue;
+                      const patch = crewSharePatch(i.visibility, crew.id, false, [crew.id, ...others]);
+                      if (patch) setVisibility(i.id, patch);
+                    }
+                    setDeleteOpen(false);
+                  }
+                  setDeleting(false);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> {t("crew_deleteConfirm")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* key: je Crew frisch öffnen, damit die Vorauswahl zur Crew passt */}
       {crew && shareOpen && <ShareToCrewDialog key={crew.id} crew={crew} open onOpenChange={setShareOpen} />}
       {borrowChat && <ChatDialog meta={borrowChat} open onOpenChange={(o) => !o && setBorrowChat(null)} />}
@@ -315,20 +355,27 @@ export function CrewView() {
               {copied ? t("crew_copied") : t("crew_shareLink")}
             </Button>
           </div>
-          <button
-            onClick={async () => {
-              if (!confirmLeave) {
-                setConfirmLeave(true);
-                setTimeout(() => setConfirmLeave(false), 3000);
-                return;
-              }
-              setConfirmLeave(false);
-              await leaveCrew(crew.id);
-            }}
-            className={cn("flex items-center gap-1.5 text-xs", confirmLeave ? "text-red-300" : "text-zinc-500 hover:text-white")}
-          >
-            <LogOut className="h-3.5 w-3.5" /> {confirmLeave ? t("crew_leaveConfirm") : t("crew_leave")}
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={async () => {
+                if (!confirmLeave) {
+                  setConfirmLeave(true);
+                  setTimeout(() => setConfirmLeave(false), 3000);
+                  return;
+                }
+                setConfirmLeave(false);
+                await leaveCrew(crew.id);
+              }}
+              className={cn("flex items-center gap-1.5 text-xs", confirmLeave ? "text-red-300" : "text-zinc-500 hover:text-white")}
+            >
+              <LogOut className="h-3.5 w-3.5" /> {confirmLeave ? t("crew_leaveConfirm") : t("crew_leave")}
+            </button>
+            {crew.ownerId === meId && (
+              <button onClick={() => setDeleteOpen(true)} className="flex items-center gap-1.5 text-xs text-red-300 hover:text-red-200">
+                <Trash2 className="h-3.5 w-3.5" /> {t("crew_delete")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
