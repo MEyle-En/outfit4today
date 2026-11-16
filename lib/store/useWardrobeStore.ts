@@ -54,6 +54,15 @@ interface WardrobeState {
   clearAll: () => void;
 }
 
+const MOCK_IDS = new Set(MOCK_WARDROBE.map((m) => m.id));
+/** Ab so vielen eigenen Teilen werden die mitgelieferten Beispiel-Teile ausgeblendet. */
+export const OWN_ITEMS_TO_HIDE_DEMO = 3;
+/** Beispiel-Teile entfernen, sobald genug eigene da sind – sie verwässern sonst Vorschläge und Kleiderschrank. */
+export function dropDemoIfEnoughOwn(items: WardrobeItem[]): WardrobeItem[] {
+  const own = items.filter((i) => !MOCK_IDS.has(i.id));
+  return own.length >= OWN_ITEMS_TO_HIDE_DEMO && own.length < items.length ? own : items;
+}
+
 const build = (n: NewItem): WardrobeItem => ({
   id: newId(), // UUID, damit das Item 1:1 in Supabase gespeichert werden kann
   name: n.name,
@@ -85,8 +94,8 @@ export const useWardrobeStore = create<WardrobeState>()(
           return { daily: { date: today, handled: handled.includes(id) ? handled : [...handled, id] } };
         }),
       resetDaily: () => set({ daily: { date: todayKey(), handled: [] } }),
-      addItem: (item) => set((s) => ({ items: [build(item), ...s.items] })),
-      addItems: (items) => set((s) => ({ items: [...items.map(build), ...s.items] })),
+      addItem: (item) => set((s) => ({ items: dropDemoIfEnoughOwn([build(item), ...s.items]) })),
+      addItems: (items) => set((s) => ({ items: dropDemoIfEnoughOwn([...items.map(build), ...s.items]) })),
       removeItem: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
       updateTags: (id, tags) => set((s) => ({ items: patch(s.items, id, { tags }) })),
       setCategory: (id, category) => set((s) => ({ items: patch(s.items, id, { category }) })),

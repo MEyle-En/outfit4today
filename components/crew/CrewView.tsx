@@ -7,6 +7,7 @@ import { Check, Globe, HandHeart, LogIn, LogOut, Plus, Share2, Shirt, Sparkles, 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FitCheckPost } from "@/components/crew/FitCheckPost";
 import { ShareToCrewDialog, crewSharePatch } from "@/components/crew/ShareToCrewDialog";
+import { ChatInbox } from "@/components/crew/ChatInbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -378,6 +379,8 @@ export function CrewView() {
           </div>
         </div>
       )}
+
+      <ChatInbox />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as CrewTab)}>
         <TabsList className="grid-cols-3">

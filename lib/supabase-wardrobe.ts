@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { categoryFromLabel } from "@/lib/categories";
 import { MOCK_WARDROBE } from "@/lib/mock/wardrobe";
 import { toast } from "@/lib/store/useToastStore";
-import { useWardrobeStore } from "@/lib/store/useWardrobeStore";
+import { dropDemoIfEnoughOwn, useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { healPlaceholderImage } from "@/lib/mock-data";
 import { newId } from "@/lib/utils/uuid";
 import { visibilityFromLegacy } from "@/lib/visibility";
@@ -146,7 +146,7 @@ export async function startWardrobeSync(userId: string): Promise<() => void> {
     // aber nur, wenn die Cloud noch leer ist (sonst würden fremde Reste in ein bestehendes Konto wandern).
     const demo = local.filter((i) => isMock(i.id));
     const adopt = cloud.length === 0 ? local.filter((i) => !isMock(i.id)) : [];
-    const items = [...adopt, ...cloud, ...demo.filter((d) => !cloudIds.has(d.id))];
+    const items = dropDemoIfEnoughOwn([...adopt, ...cloud, ...demo.filter((d) => !cloudIds.has(d.id))]);
     for (const c of cloud) known.set(c.id, c); // Referenz = Stand der Cloud
     store.setState({ items: items.map((i) => known.get(i.id) ?? i) });
   } catch (e) {

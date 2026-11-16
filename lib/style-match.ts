@@ -1,7 +1,7 @@
 import type { ItemCategory, ItemColor, StylePrefs, VibeId } from "@/types";
 
 /** Vibe-Check-Farbpaletten (siehe lib/mock/quiz.ts) -> konkrete Item-Farben. */
-const PALETTE: Record<string, ItemColor[]> = {
+export const PALETTE: Record<string, ItemColor[]> = {
   mono: ["black", "white", "gray"],
   earth: ["brown", "beige", "orange"],
   neon: ["purple", "pink", "green", "yellow"],
@@ -11,7 +11,7 @@ const PALETTE: Record<string, ItemColor[]> = {
 };
 
 /** Vibe-Check-"Icons" -> Kategorien, die der User liebt. */
-const ICON_CATEGORIES: Record<string, ItemCategory[]> = {
+export const ICON_CATEGORIES: Record<string, ItemCategory[]> = {
   hoodie: ["top"],
   sneakers: ["shoes"],
   shades: ["accessory"],

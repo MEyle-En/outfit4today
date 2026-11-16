@@ -16,6 +16,8 @@ import { todayKey, useWardrobeStore } from "@/lib/store/useWardrobeStore";
 import { haptic } from "@/lib/utils/haptic";
 import { daysSince } from "@/lib/wear";
 import { completeOutfit } from "@/lib/outfit";
+import { QUIZ_STEPS } from "@/lib/mock/quiz";
+import { useStyleStore } from "@/lib/store/useStyleStore";
 import { ExampleBadge } from "@/components/ui/ExampleBadge";
 import { isDemoItem } from "@/lib/demo";
 import type { WardrobeItem } from "@/types";
@@ -58,7 +60,21 @@ export function TodayItem() {
   );
 
   // Das Teil des Tages wird zu einem kompletten Outfit ergänzt (Oberteil + Hose + Schuhe …)
-  const companions = useMemo(() => (candidate ? completeOutfit(candidate, clothes) : []), [candidate, clothes]);
+  // Vibe, Farbpaletten und Lieblings-Pieces aus dem Vibe Check bestimmen Farben und Zusatzteil
+  const vibes = useStyleStore((s) => s.vibes);
+  const palettes = useStyleStore((s) => s.colors);
+  const icons = useStyleStore((s) => s.icons);
+  const outfit = useMemo(
+    () => (candidate ? completeOutfit(candidate, clothes, { vibes, colors: palettes, icons }) : null),
+    [candidate, clothes, vibes, palettes, icons],
+  );
+  const companions = outfit?.items ?? [];
+  const styleNote =
+    outfit && (outfit.styleHits > 0 || outfit.extra)
+      ? [...vibes.map((id) => QUIZ_STEPS[0].options.find((o) => o.id === id)?.label), ...palettes.map((id) => QUIZ_STEPS[1].options.find((o) => o.id === id)?.label)]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
 
   const reason = !candidate
     ? ""
@@ -148,6 +164,7 @@ export function TodayItem() {
                   </li>
                 ))}
               </ul>
+              {styleNote && <p className="text-xs text-accent-soft">{t("today_styleNote", { style: styleNote })}</p>}
             </div>
           )}
 

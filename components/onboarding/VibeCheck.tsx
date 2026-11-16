@@ -9,6 +9,10 @@ import { playSound } from "@/lib/sound";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useStyleStore } from "@/lib/store/useStyleStore";
 import { cn } from "@/lib/utils";
+import { VIBE_RULES } from "@/lib/outfit";
+import { ICON_CATEGORIES, PALETTE } from "@/lib/style-match";
+import { colorLabel } from "@/lib/colors";
+import { categoryLabel } from "@/lib/categories";
 
 type Selection = Record<"vibes" | "colors" | "icons", string[]>;
 
@@ -216,6 +220,20 @@ function Result({ selection }: { selection: Selection }) {
     ...selection.icons.map((id) => label(2, id)),
   ];
 
+  // Konkrete Auswirkungen statt eines leeren Versprechens (dieselben Regeln nutzt der Outfit-Vorschlag, lib/outfit.ts)
+  const rules = selection.vibes.map((v) => VIBE_RULES[v]).filter(Boolean);
+  const colors = Array.from(new Set([...selection.colors.flatMap((c) => PALETTE[c] ?? []), ...rules.flatMap((r) => r.colors)]));
+  const extras = Array.from(
+    new Set([...rules.flatMap((r) => r.extra), ...selection.icons.flatMap((i) => ICON_CATEGORIES[i] ?? [])]),
+  );
+  const loud = rules.length ? Math.max(...rules.map((r) => r.loud)) : 1;
+  const effects = [
+    colors.length ? `Outfit-Vorschläge bevorzugen ${colors.slice(0, 5).map(colorLabel).join(", ")}.` : "",
+    loud === 0 ? "Ruhige Looks: keine kräftigen Farben im Outfit." : loud === 1 ? "Höchstens eine kräftige Farbe pro Outfit." : "Mutige Looks: bis zu zwei kräftige Farben pro Outfit.",
+    extras.length ? `Zu jedem Outfit kommt gern etwas aus: ${extras.slice(0, 3).map(categoryLabel).join(", ")}.` : "",
+    "Im Marketplace stehen passende Angebote oben.",
+  ].filter(Boolean);
+
   return (
     <div className="flex flex-col items-center pt-10 text-center">
       <motion.div
@@ -231,9 +249,14 @@ function Result({ selection }: { selection: Selection }) {
         <br />
         <span className="text-accent-soft">ist ready.</span>
       </h1>
-      <p className="mt-3 max-w-xs text-sm text-zinc-400">
-        Wir haben deinen Feed schon nach deinem Vibe sortiert.
-      </p>
+      <p className="mt-3 max-w-xs text-sm text-zinc-400">Das ändert sich jetzt für dich:</p>
+      <ul className="mt-3 w-full max-w-xs space-y-2 text-left text-sm">
+        {effects.map((e) => (
+          <li key={e} className="glass rounded-2xl px-3 py-2 text-zinc-200">
+            {e}
+          </li>
+        ))}
+      </ul>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         {chips.map((c, i) => (
           <motion.span
